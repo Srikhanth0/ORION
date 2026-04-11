@@ -1,0 +1,31 @@
+# ═══════════════════════════════════════════════════════════════
+# ORION — vLLM Provider Configuration
+# ═══════════════════════════════════════════════════════════════
+
+provider_name: vllm
+
+# Model served via vLLM
+model: Qwen/Qwen2.5-72B-Instruct-GPTQ-Int4
+served_model_name: qwen2.5-72b    # name registered in vLLM --served-model-name
+
+# Connection
+base_url: http://localhost:8000/v1
+
+# vLLM server parameters (used by scripts/start_vllm.sh)
+server:
+  max_model_len: 32768
+  tensor_parallel_size: 2
+  quantization: gptq
+  gpu_memory_utilization: 0.85
+
+# Generation defaults
+defaults:
+  temperature: 0.7
+  max_tokens: 4096
+  top_p: 0.95
+
+# Health check
+health_check:
+  endpoint: /v1/models
+  interval_seconds: 30
+  timeout_seconds: 5

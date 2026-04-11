@@ -1,0 +1,46 @@
+# ═══════════════════════════════════════════════════════════════
+# ORION — Kubernetes Service
+# ═══════════════════════════════════════════════════════════════
+apiVersion: v1
+kind: Service
+metadata:
+  name: orion-api
+  labels:
+    app: orion
+    component: api
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+      name: http
+    - port: 9091
+      targetPort: metrics
+      protocol: TCP
+      name: metrics
+  selector:
+    app: orion
+    component: api
+---
+# Optional LoadBalancer for external access
+apiVersion: v1
+kind: Service
+metadata:
+  name: orion-api-lb
+  labels:
+    app: orion
+    component: api
+  annotations:
+    # Cloud provider annotations go here
+    # service.beta.kubernetes.io/aws-load-balancer-type: nlb
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app: orion
+    component: api

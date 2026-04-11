@@ -1,0 +1,72 @@
+[
+  {
+    "id": 1,
+    "instruction": "Create /tmp/hello.txt with content 'hello world'",
+    "expected_status": "DONE",
+    "category": "file",
+    "context": {}
+  },
+  {
+    "id": 2,
+    "instruction": "List all Python files in /workspace recursively",
+    "expected_status": "DONE",
+    "category": "shell",
+    "context": {}
+  },
+  {
+    "id": 3,
+    "instruction": "Clone the public GitHub repo https://github.com/octocat/Hello-World",
+    "expected_status": "DONE",
+    "category": "github",
+    "context": {"mock": true}
+  },
+  {
+    "id": 4,
+    "instruction": "Create a GitHub issue titled 'Bug: Login broken' in repo octocat/Hello-World",
+    "expected_status": "DONE",
+    "category": "github",
+    "context": {"mock": true}
+  },
+  {
+    "id": 5,
+    "instruction": "Send a Slack message to #general saying 'Deploy complete'",
+    "expected_status": "DONE",
+    "category": "saas",
+    "context": {"mock": true}
+  },
+  {
+    "id": 6,
+    "instruction": "Run 'echo hello' in the shell and capture stdout",
+    "expected_status": "DONE",
+    "category": "shell",
+    "context": {}
+  },
+  {
+    "id": 7,
+    "instruction": "Take a screenshot of https://example.com",
+    "expected_status": "DONE",
+    "category": "browser",
+    "context": {"mock": true}
+  },
+  {
+    "id": 8,
+    "instruction": "Store a document titled 'Meeting Notes' in Notion workspace",
+    "expected_status": "DONE",
+    "category": "saas",
+    "context": {"mock": true}
+  },
+  {
+    "id": 9,
+    "instruction": "Create file /tmp/chain_test.txt with 'test data', then read it back and verify content matches",
+    "expected_status": "DONE",
+    "category": "chain",
+    "context": {}
+  },
+  {
+    "id": 10,
+    "instruction": "Clone repo octocat/Hello-World, run tests, and report results as a GitHub issue",
+    "expected_status": "DONE",
+    "category": "chain",
+    "context": {"mock": true}
+  }
+]

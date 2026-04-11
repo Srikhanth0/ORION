@@ -1,0 +1,37 @@
+# ═══════════════════════════════════════════════════════════════
+# ORION — LLM Router Configuration
+# ═══════════════════════════════════════════════════════════════
+# Defines the fallback chain and routing rules for the adaptive
+# LLM router. Providers are tried in order; on failure or quota
+# exhaustion, the next provider is attempted.
+
+# Fallback chain order (first healthy provider wins)
+fallback_chain:
+  - vllm           # Priority 1: local, zero-cost
+  - groq           # Priority 2: free tier, rate-limited
+  - openrouter     # Priority 3: pay-per-token
+
+# Role-based model assignment
+# Maps logical roles to specific models on each provider
+roles:
+  fast_text:
+    preferred_provider: groq
+    model: llama-3.3-70b-versatile
+  reasoning:
+    preferred_provider: openrouter
+    model: openai/gpt-oss-120b:free
+  vision:
+    preferred_provider: groq
+    model: meta-llama/llama-4-scout-17b-16e-instruct
+    fallback_model: google/gemma-4-26b-a4b-it:free
+    fallback_provider: openrouter
+
+# Circuit breaker settings
+circuit_breaker:
+  failure_threshold: 3         # failures before tripping
+  recovery_timeout_seconds: 60 # seconds before retry after trip
+
+# Global rate-limit delays (minimum seconds between requests)
+rate_limit_delays:
+  groq: 2.5
+  openrouter: 3.5

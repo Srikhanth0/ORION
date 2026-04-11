@@ -1,0 +1,30 @@
+# ═══════════════════════════════════════════════════════════════
+# ORION — Composio MCP Configuration
+# ═══════════════════════════════════════════════════════════════
+
+composio:
+  api_key_env: COMPOSIO_API_KEY
+
+  # Enabled app categories
+  enabled_apps:
+    - GITHUB
+    - SHELL
+    - FILE
+    - BROWSER
+    - SLACK
+    - LINEAR
+    - NOTION
+    - GMAIL
+    - CALENDAR
+
+  # Registry cache settings
+  registry:
+    auto_load: true
+    cache_embeddings: true
+    refresh_interval_hours: 24
+
+  # Default invocation settings
+  defaults:
+    timeout_seconds: 30
+    max_retries: 2
+    log_params: true

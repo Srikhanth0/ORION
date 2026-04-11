@@ -1,0 +1,27 @@
+# ═══════════════════════════════════════════════════════════════
+# ORION — OpenRouter Provider Configuration
+# ═══════════════════════════════════════════════════════════════
+
+provider_name: openrouter
+
+# Models available on OpenRouter
+models:
+  reasoning: openai/gpt-oss-120b:free
+  vision: google/gemma-4-26b-a4b-it:free
+
+# Rate limit thresholds (free tier)
+rate_limits:
+  max_rpm: 20
+  backoff_strategy: exponential
+  backoff_base_seconds: 2
+  backoff_max_seconds: 32
+
+# Budget guard
+budget:
+  max_cost_per_task_usd: 0.50
+  max_daily_cost_usd: 5.00
+
+# Generation defaults
+defaults:
+  temperature: 0.7
+  max_tokens: 4096

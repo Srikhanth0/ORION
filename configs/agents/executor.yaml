@@ -1,0 +1,28 @@
+# ═══════════════════════════════════════════════════════════════
+# ORION — Executor Agent Configuration
+# ═══════════════════════════════════════════════════════════════
+
+agent:
+  name: executor
+  class: orion.agents.executor.ExecutorAgent
+  prompt_template: executor_system.j2
+
+  # Execution parameters
+  max_retries: 3
+  base_backoff_seconds: 1.0
+  tool_timeout_seconds: 60.0
+
+  # Safety
+  safety:
+    require_checkpoint_before_destructive: true
+    require_safety_check: true
+
+  # Tool interpretation (lightweight LLM use)
+  interpretation:
+    temperature: 0.2
+    max_tokens: 500
+
+# RPC configuration
+rpc:
+  port: 12311
+  host: "0.0.0.0"

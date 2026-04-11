@@ -1,0 +1,31 @@
+# ═══════════════════════════════════════════════════════════════
+# ORION — Planner Agent Configuration
+# ═══════════════════════════════════════════════════════════════
+
+agent:
+  name: planner
+  class: orion.agents.planner.PlannerAgent
+  prompt_template: planner_system.j2
+
+  # Planning parameters
+  max_subtasks: 20
+  max_retries: 2
+  temperature: 0.3
+
+  # ReAct reasoning
+  reasoning:
+    require_chain_of_thought: true
+    require_tool_binding: true
+    require_dependency_graph: true
+
+  # Guard rails
+  guard_rails:
+    max_plan_depth: 10
+    forbidden_tools: []
+    require_expected_output: true
+    flag_destructive_ops: true
+
+# RPC configuration (for distributed mode)
+rpc:
+  port: 12310
+  host: "0.0.0.0"

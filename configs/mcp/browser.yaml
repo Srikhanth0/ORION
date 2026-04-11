@@ -1,0 +1,31 @@
+# ═══════════════════════════════════════════════════════════════
+# ORION — Browser Tool Configuration
+# ═══════════════════════════════════════════════════════════════
+
+browser:
+  # Navigation limits
+  navigation:
+    default_timeout: 30
+    max_page_load_wait: 15
+    blocked_domains:
+      - "*.internal"
+      - "localhost"
+      - "127.0.0.1"
+
+  # Interaction settings
+  interaction:
+    click_delay_ms: 100
+    type_delay_ms: 50
+
+  # Screenshot settings
+  screenshots:
+    format: png
+    full_page: false
+    max_width: 1920
+    max_height: 1080
+
+  # Security
+  security:
+    disable_javascript_eval: true
+    block_downloads: true
+    block_popups: true

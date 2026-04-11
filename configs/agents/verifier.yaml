@@ -1,0 +1,29 @@
+# ═══════════════════════════════════════════════════════════════
+# ORION — Verifier Agent Configuration
+# ═══════════════════════════════════════════════════════════════
+
+agent:
+  name: verifier
+  class: orion.agents.verifier.VerifierAgent
+  prompt_template: verifier_system.j2
+
+  # Verification parameters
+  temperature: 0.2
+  max_tokens: 2048
+
+  # Assertion types enabled
+  assertions:
+    string_contains: true
+    regex_match: true
+    json_path: true
+    non_empty_output: true
+
+  # LLM critique
+  critique:
+    enabled: true
+    fallback_to_assertions: true
+
+# RPC configuration
+rpc:
+  port: 12312
+  host: "0.0.0.0"

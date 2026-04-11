@@ -1,0 +1,25 @@
+# ORION — Docker ignore
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+.env
+.git/
+.github/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+dist/
+build/
+*.egg-info/
+node_modules/
+*.md
+!README.md
+tests/
+infra/
+uv.lock
+Makefile
+docker-compose.yml
+Dockerfile
+.dockerignore
+.gitignore

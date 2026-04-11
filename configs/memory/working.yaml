@@ -1,0 +1,18 @@
+# ═══════════════════════════════════════════════════════════════
+# ORION — Working Memory Configuration
+# ═══════════════════════════════════════════════════════════════
+
+# AgentScope in-context sliding window
+max_context_tokens: 8192
+max_messages: 50
+
+# Eviction threshold (fraction of max_context_tokens)
+eviction_threshold: 0.80
+
+# Summarisation on overflow
+summarize_on_overflow: true
+summary_max_tokens: 512
+summary_model_role: fast_text  # which LLM role to use for summarisation
+
+# Token estimation method
+token_estimator: char_div_4    # fast heuristic: len(text) // 4

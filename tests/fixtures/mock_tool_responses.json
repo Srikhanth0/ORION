@@ -1,0 +1,90 @@
+{
+  "GITHUB_CREATE_ISSUE": {
+    "status": "success",
+    "data": {
+      "url": "https://github.com/test/repo/issues/42",
+      "number": 42,
+      "title": "Test Issue"
+    }
+  },
+  "GITHUB_LIST_PRS": {
+    "status": "success",
+    "data": [
+      {"number": 1, "title": "First PR", "state": "open"},
+      {"number": 2, "title": "Second PR", "state": "closed"}
+    ]
+  },
+  "SHELL_EXEC_CMD": {
+    "status": "success",
+    "data": {
+      "stdout": "total 4\n-rw-r--r-- 1 user user 0 Jan 1 00:00 test.txt",
+      "stderr": "",
+      "exit_code": 0
+    }
+  },
+  "FILE_WRITE": {
+    "status": "success",
+    "data": {
+      "path": "/tmp/test.txt",
+      "bytes_written": 12
+    }
+  },
+  "FILE_READ": {
+    "status": "success",
+    "data": {
+      "path": "/tmp/test.txt",
+      "content": "Hello World\n"
+    }
+  },
+  "BROWSER_NAVIGATE_URL": {
+    "status": "success",
+    "data": {
+      "url": "https://example.com",
+      "title": "Example Domain",
+      "status_code": 200
+    }
+  },
+  "BROWSER_SCREENSHOT": {
+    "status": "success",
+    "data": {
+      "path": "/tmp/screenshot.png",
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "SLACK_SEND_MESSAGE": {
+    "status": "success",
+    "data": {
+      "channel": "#general",
+      "ts": "1704067200.000001"
+    }
+  },
+  "NOTION_ADD_PAGE": {
+    "status": "success",
+    "data": {
+      "page_id": "abc123",
+      "url": "https://notion.so/abc123"
+    }
+  },
+  "GMAIL_SEND_EMAIL": {
+    "status": "success",
+    "data": {
+      "message_id": "msg_001",
+      "to": "test@example.com"
+    }
+  },
+  "__errors__": {
+    "TOOL_NOT_FOUND": {
+      "status": "error",
+      "error": "Tool 'NONEXISTENT_TOOL' not found in registry"
+    },
+    "PERMISSION_DENIED": {
+      "status": "error",
+      "error": "Tool 'delete_repo' is explicitly denied"
+    },
+    "TIMEOUT": {
+      "status": "error",
+      "error": "Tool 'SHELL_EXEC_CMD' timed out after 30s"
+    }
+  }
+}

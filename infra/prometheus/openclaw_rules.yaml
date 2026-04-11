@@ -1,0 +1,76 @@
+# ═══════════════════════════════════════════════════════════════
+# ORION — Prometheus Alerting Rules
+# ═══════════════════════════════════════════════════════════════
+
+groups:
+  - name: orion_llm_alerts
+    interval: 30s
+    rules:
+      - alert: AllProvidersDown
+        expr: sum(openclaw_provider_status) == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "All LLM providers are unavailable"
+          description: "No LLM provider is responding. Tasks cannot proceed."
+
+      - alert: HighLLMLatency
+        expr: histogram_quantile(0.95, rate(openclaw_llm_latency_seconds_bucket[5m])) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "LLM p95 latency exceeds 10s"
+
+      - alert: HighLLMErrorRate
+        expr: >
+          rate(openclaw_llm_requests_total{status="error"}[5m])
+          / rate(openclaw_llm_requests_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "LLM error rate exceeds 10%"
+
+      - alert: CircuitBreakerOpen
+        expr: openclaw_circuit_breaker_state == 1
+        for: 30s
+        labels:
+          severity: warning
+        annotations:
+          summary: "Circuit breaker open for provider {{ $labels.provider }}"
+
+  - name: orion_task_alerts
+    interval: 30s
+    rules:
+      - alert: HighTaskFailureRate
+        expr: >
+          rate(openclaw_tasks_total{status="fail"}[10m])
+          / rate(openclaw_tasks_total[10m]) > 0.3
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Task failure rate exceeds 30%"
+
+      - alert: LongRunningTask
+        expr: histogram_quantile(0.95, rate(openclaw_task_duration_seconds_bucket[5m])) > 240
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Task p95 duration exceeds 4 minutes"
+
+  - name: orion_tool_alerts
+    interval: 30s
+    rules:
+      - alert: HighToolErrorRate
+        expr: >
+          rate(openclaw_tool_calls_total{status="error"}[5m])
+          / rate(openclaw_tool_calls_total[5m]) > 0.2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Tool error rate exceeds 20%"

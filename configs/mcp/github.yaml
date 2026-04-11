@@ -1,0 +1,26 @@
+# ═══════════════════════════════════════════════════════════════
+# ORION — GitHub Tool Configuration
+# ═══════════════════════════════════════════════════════════════
+
+github:
+  # Default repository for operations
+  default_repo: ""
+
+  # Branch protection
+  protected_branches:
+    - main
+    - master
+    - production
+
+  # Auto-create PR for destructive changes
+  require_pr_for_push: true
+
+  # Tool-specific timeouts
+  timeouts:
+    create_issue: 15
+    push_files: 30
+    list_prs: 10
+    get_file_content: 10
+    create_branch: 10
+    merge_pr: 30
+    run_workflow: 60

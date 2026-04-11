@@ -1,0 +1,39 @@
+# ═══════════════════════════════════════════════════════════════
+# ORION — OS Automation Tool Configuration
+# ═══════════════════════════════════════════════════════════════
+
+os_automation:
+  # Shell execution
+  shell:
+    default_shell: "bash"
+    default_timeout: 30
+    max_output_bytes: 1048576  # 1 MB
+
+  # File operations
+  filesystem:
+    max_file_size_mb: 50
+    allowed_extensions:
+      - .py
+      - .js
+      - .ts
+      - .json
+      - .yaml
+      - .yml
+      - .md
+      - .txt
+      - .csv
+      - .sh
+    denied_extensions:
+      - .exe
+      - .dll
+      - .so
+      - .bin
+
+  # Process management
+  process:
+    allow_kill: true
+    protected_processes:
+      - systemd
+      - init
+      - sshd
+      - docker

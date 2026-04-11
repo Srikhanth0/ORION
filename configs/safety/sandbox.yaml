@@ -1,0 +1,36 @@
+# ═══════════════════════════════════════════════════════════════
+# ORION — Execution Sandbox Configuration
+# ═══════════════════════════════════════════════════════════════
+
+# Global execution limits
+task_timeout_seconds: 300      # 5-minute hard cap per task
+subtask_timeout_seconds: 30    # default per-subtask timeout
+
+# Resource caps (per subprocess)
+resource_limits:
+  max_memory_mb: 512
+  max_cpu_percent: 80
+  max_processes: 64
+  max_file_size_mb: 100
+
+# Rollback settings
+rollback:
+  enabled: true
+  checkpoint_dir: checkpoints/
+  max_checkpoints_per_task: 20
+  auto_cleanup_after_hours: 24
+
+# Destructive operation gate mode
+#   auto   — low-risk: auto-approve, high-risk: require approval
+#   strict — ALL destructive ops require human approval
+gate_mode: auto
+
+# Destructive operation classification
+destructive_operations:
+  - delete_file
+  - delete_repo
+  - exec_cmd           # all shell commands require gate in strict mode
+  - push_files
+  - send_email
+  - bulk_delete
+  - kill_process

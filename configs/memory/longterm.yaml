@@ -1,0 +1,23 @@
+# ═══════════════════════════════════════════════════════════════
+# ORION — Long-term Memory Configuration
+# ═══════════════════════════════════════════════════════════════
+
+# Qdrant vector database
+backend: qdrant
+url: http://localhost:6333
+collection: orion_tasks
+failure_collection: orion_failures
+
+# Embedding model
+embedding_model: all-MiniLM-L6-v2
+embedding_dimension: 384
+
+# Retrieval defaults
+default_top_k: 3
+score_threshold: 0.5           # minimum similarity score to return
+
+# Storage policy
+store_on_pass: true
+store_on_soft_fail_recovery: true
+store_on_hard_fail: true       # into failure collection only
+max_task_description_length: 2000

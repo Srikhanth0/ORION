@@ -1,0 +1,110 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "orion-agent"
+version = "0.1.0"
+description = "ORION — Hierarchical OS automation agent combining AgentScope, HiClaw, Composio MCP, and tiered LLM backend."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "ORION Contributors" }]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Typing :: Typed",
+]
+dependencies = [
+    # ── Orchestration & Agents ──
+    "agentscope>=0.1.0",
+
+    # ── LLM Providers ──
+    "openai~=1.60",
+    "groq~=0.13",
+    "httpx~=0.27",
+
+    # ── Tool Integration (Composio MCP) ──
+    "composio-core>=0.6.0",
+
+    # ── API Server ──
+    "fastapi~=0.115",
+    "uvicorn[standard]~=0.34",
+
+    # ── Data Validation & Config ──
+    "pydantic~=2.10",
+    "pydantic-settings~=2.7",
+    "pyyaml~=6.0",
+    "jinja2~=3.1",
+
+    # ── Memory ──
+    "qdrant-client~=1.12",
+    "sentence-transformers~=3.3",
+
+    # ── Observability ──
+    "langsmith~=0.2",
+    "prometheus-client~=0.21",
+    "structlog~=24.4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest~=8.3",
+    "pytest-asyncio~=0.24",
+    "pytest-mock~=3.14",
+    "ruff~=0.8",
+    "mypy~=1.13",
+    "types-PyYAML~=6.0",
+    "types-jinja2~=2.11",
+]
+
+[project.scripts]
+orion = "orion.api.server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["orion"]
+
+# ── Ruff ──────────────────────────────────────────────────
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "UP", "B", "C4", "SIM"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["orion"]
+
+# ── Mypy ──────────────────────────────────────────────────
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_any_generics = true
+
+[[tool.mypy.overrides]]
+module = [
+    "agentscope.*",
+    "composio.*",
+    "sentence_transformers.*",
+    "qdrant_client.*",
+    "langsmith.*",
+]
+ignore_missing_imports = true
+
+# ── Pytest ────────────────────────────────────────────────
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks integration tests requiring live services",
+]

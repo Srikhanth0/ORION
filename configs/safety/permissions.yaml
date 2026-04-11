@@ -1,0 +1,83 @@
+# ═══════════════════════════════════════════════════════════════
+# ORION — Safety Permission Manifest
+# ═══════════════════════════════════════════════════════════════
+# Defines per-tool-category allowed/denied operations.
+# The PermissionManifest loader checks every tool invocation
+# against these rules before execution.
+
+github:
+  allowed:
+    - create_issue
+    - list_prs
+    - get_file_content
+    - push_files
+    - create_branch
+  denied:
+    - delete_repo
+    - transfer_repo
+    - update_org_settings
+
+shell:
+  allowed:
+    - exec_cmd
+  denied_patterns:
+    - "rm -rf /"
+    - "sudo rm"
+    - "dd if="
+    - "mkfs"
+    - ":(){:|:&};:"
+  allowed_patterns:
+    - "*"
+  max_timeout_seconds: 30
+
+filesystem:
+  allowed_paths:
+    - "/home"
+    - "/tmp"
+    - "/workspace"
+    - "C:\\Users"
+    - "C:\\temp"
+  denied_paths:
+    - "/etc"
+    - "/sys"
+    - "/boot"
+    - "/dev"
+    - "C:\\Windows"
+    - "C:\\Windows\\System32"
+
+browser:
+  allowed:
+    - navigate_url
+    - click_element
+    - get_page_source
+    - screenshot
+  denied:
+    - execute_script   # arbitrary JS execution
+
+saas:
+  allowed:
+    - send_message
+    - create_page
+    - create_task
+    - read_email
+  denied:
+    - delete_workspace
+    - remove_member
+    - bulk_delete
+
+# ── Destructive Risk Levels ──────────────────────────────
+# Used by DestructiveOpGate to classify risk as low or high.
+destructive_risk_levels:
+  high:
+    - delete_repo
+    - transfer_repo
+    - drop_database
+    - bulk_delete
+    - format_disk
+    - "rm -rf"
+    - destroy
+  low:
+    - delete_file
+    - remove_temp
+    - clean_cache
+    - unlink

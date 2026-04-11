@@ -1,0 +1,35 @@
+# ═══════════════════════════════════════════════════════════════
+# ORION — Supervisor Agent Configuration
+# ═══════════════════════════════════════════════════════════════
+
+agent:
+  name: supervisor
+  class: orion.agents.supervisor.SupervisorAgent
+  prompt_template: supervisor_system.j2
+
+  # Decision parameters
+  max_auto_retries: 3
+  global_task_timeout_seconds: 300
+
+  # Retry safety analysis
+  retry_analysis:
+    temperature: 0.1
+    max_tokens: 500
+
+  # HITL gateway
+  hitl:
+    mode: dev           # dev = blocking input(), prod = webhook
+    webhook_url: ""
+    webhook_timeout_seconds: 300
+
+  # Decision matrix weights
+  decision_matrix:
+    pass: COMPLETE
+    soft_fail: RETRY_OR_ESCALATE
+    hard_fail: ROLLBACK_OR_ESCALATE
+    safety_error: ABORT_AND_ROLLBACK
+
+# RPC configuration
+rpc:
+  port: 12313
+  host: "0.0.0.0"
