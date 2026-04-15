@@ -38,9 +38,9 @@ class ExecutorAgent(BaseOrionAgent):
     async def reply(self, *args: Any, **kwargs: Any) -> Msg:
         default = Msg(name="user", role="user", content="[]")
         x: Msg = args[0] if args else kwargs.get("x", default)
-        
+
         content = x.content if isinstance(x.content, str) else "[]"
-        
+
         try:
             plan = json.loads(content)
         except json.JSONDecodeError as exc:
@@ -51,12 +51,12 @@ class ExecutorAgent(BaseOrionAgent):
             }]), source_msg=x)
 
         subtasks = plan if isinstance(plan, list) else plan.get("subtasks", [])
-        
+
         results = []
         for subtask in subtasks:
             result = await self.execute_subtask(subtask)
             results.append(result)
-            
+
         return self._make_reply(
             content=json.dumps(results, indent=2),
             source_msg=x,
@@ -66,12 +66,12 @@ class ExecutorAgent(BaseOrionAgent):
         subtask_id = subtask.get("id", "unknown")
         tool_name = subtask.get("tool", "unknown")
         params = subtask.get("params", {})
-        
+
         for attempt in range(self._max_retries + 1):
             start = time.monotonic()
             try:
                 native_tools = getattr(self._tool_registry, "_native_tools", {})
-                
+
                 # Map wrong tool names to right ones
                 mappings = {
                     "list_directory": "list_directory",
@@ -87,7 +87,7 @@ class ExecutorAgent(BaseOrionAgent):
                     "dir": "list_directory",
                 }
                 tool_name = mappings.get(tool_name, tool_name)
-                
+
                 # Try native tools first
                 if tool_name in native_tools:
                     output = await asyncio.wait_for(
@@ -103,7 +103,7 @@ class ExecutorAgent(BaseOrionAgent):
                         "duration_ms": round(elapsed, 1),
                         "attempt": attempt + 1,
                     }
-                
+
                 # Fallback: simulate
                 output = f"Simulated: {tool_name}({params})"
                 elapsed = (time.monotonic() - start) * 1000

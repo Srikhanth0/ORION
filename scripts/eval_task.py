@@ -12,14 +12,14 @@ Usage:
 
 from __future__ import annotations
 
-import asyncio
 import argparse
+import asyncio
+import io
 import json
 import sys
 import time
 from datetime import UTC, datetime
 from pathlib import Path
-import io
 
 # Windows event loop fix (must be FIRST, before any asyncio import side-effects)
 if sys.platform == "win32":
@@ -35,12 +35,7 @@ _project_root = Path(__file__).resolve().parent.parent
 if str(_project_root) not in sys.path:
     sys.path.insert(0, str(_project_root))
 
-_FIXTURES = (
-    Path(__file__).resolve().parent.parent
-    / "tests"
-    / "fixtures"
-    / "sample_tasks.json"
-)
+_FIXTURES = Path(__file__).resolve().parent.parent / "tests" / "fixtures" / "sample_tasks.json"
 
 
 def load_tasks() -> list[dict]:
@@ -62,8 +57,9 @@ def run_task(task: dict, verbose: bool = False) -> dict:
 
     try:
         from orion.agentscope_config import init_agentscope
+
         init_agentscope()
-        
+
         from agentscope.message import Msg
 
         from orion.agents.executor import ExecutorAgent
@@ -73,15 +69,19 @@ def run_task(task: dict, verbose: bool = False) -> dict:
 
         async def _run() -> dict:
             initial = Msg(
-                name="user", role="user",
+                name="user",
+                role="user",
                 content=instruction,
-                metadata={"orion_meta": {
-                    "task_id": f"eval_{task_id}",
-                    "step_index": 0, "retry_count": 0,
-                    "rollback_available": False,
-                    "trace_id": f"eval_{task_id}",
-                    "context": task.get("context", {}),
-                }},
+                metadata={
+                    "orion_meta": {
+                        "task_id": f"eval_{task_id}",
+                        "step_index": 0,
+                        "retry_count": 0,
+                        "rollback_available": False,
+                        "trace_id": f"eval_{task_id}",
+                        "context": task.get("context", {}),
+                    }
+                },
             )
             planner = PlannerAgent()
             plan_msg = await planner.reply(initial)
@@ -95,15 +95,8 @@ def run_task(task: dict, verbose: bool = False) -> dict:
             try:
                 result_data = json.loads(final_msg.content)
                 decision = result_data.get("decision", {})
-                action = decision.get("action", "COMPLETE")
-                if action == "COMPLETE":
-                    status = "DONE"
-                else:
-                    status = "FAILED"
-                error = None
             except (json.JSONDecodeError, KeyError):
-                status = "DONE"
-                error = None
+                decision = {}
 
             return {"result": final_msg.content[:200], "decision": decision}
 
@@ -112,7 +105,7 @@ def run_task(task: dict, verbose: bool = False) -> dict:
             if sys.platform == "win32":
                 asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
             return await _run()
-        
+
         run_result = asyncio.run(run_with_fresh_loop())
         decision = run_result.get("decision", {})
         action = decision.get("action", "COMPLETE")
@@ -171,8 +164,10 @@ def main() -> int:
 
     report = {
         "timestamp": datetime.now(tz=UTC).isoformat(),
-        "total_tasks": total, "passed": passed,
-        "failed": total - passed, "results": results,
+        "total_tasks": total,
+        "passed": passed,
+        "failed": total - passed,
+        "results": results,
     }
     output_path = args.output or (
         f"eval_report_{datetime.now(tz=UTC).strftime('%Y%m%d_%H%M%S')}.json"

@@ -14,6 +14,7 @@ Depends On
 - ``agentscope.agent`` (AgentBase)
 - ``agentscope.message`` (Msg)
 """
+
 from __future__ import annotations
 
 import json
@@ -60,6 +61,7 @@ class BaseOrionAgent(AgentBase):
         if self._model is None:
             try:
                 from orion.agentscope_config import build_model
+
                 self._model = build_model()
             except Exception as exc:
                 logger.warning(
@@ -89,9 +91,7 @@ class BaseOrionAgent(AgentBase):
             "context": meta.get("context", {}),
         }
 
-    def _set_orion_meta(
-        self, msg: Msg, updates: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    def _set_orion_meta(self, msg: Msg, updates: dict[str, Any] | None = None) -> dict[str, Any]:
         """Copy and optionally update orion_meta for outgoing messages.
 
         Args:
@@ -149,15 +149,16 @@ class BaseOrionAgent(AgentBase):
         Returns:
             LLM response content string.
         """
-        # AgentScope OpenAIChatModel has a bug in v1.0.18 where stream=False throws an async context manager error.
+        # AgentScope OpenAIChatModel has a bug in v1.0.18 where stream=False throws an async context manager error.  # noqa: E501
         # So we omit stream=False and consume the returned async_generator.
         if "stream" in kwargs:
             del kwargs["stream"]
-            
+
         response = await self._model(messages=messages, **kwargs)
-        
+
         # If response is an async generator (e.g. streaming fallback), consume it
         import inspect
+
         if inspect.isasyncgen(response):
             last_content = ""
             async for chunk in response:
@@ -176,7 +177,7 @@ class BaseOrionAgent(AgentBase):
 
         if getattr(response, "text", None):
             return response.text
-        
+
         # Fallback if content handles are used
         content = getattr(response, "content", None)
         if isinstance(content, str):
@@ -224,9 +225,7 @@ class BaseOrionAgent(AgentBase):
                 error=str(exc),
                 text_preview=cleaned[:200],
             )
-            raise ValueError(
-                f"Failed to parse JSON from LLM output: {exc}"
-            ) from exc
+            raise ValueError(f"Failed to parse JSON from LLM output: {exc}") from exc
 
     def _make_reply(
         self,

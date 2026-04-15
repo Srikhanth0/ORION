@@ -1,11 +1,12 @@
 import argparse
-import sys
+import json
 import os
 import subprocess
-import yaml
-import requests
+import sys
 import time
-import json
+
+import requests
+import yaml
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -39,13 +40,15 @@ def audit_configs():
         print(f"OK: {f}" if os.path.exists(f) else f"BREAK: Missing {f}")
 
     try:
-        yaml.safe_load(open("configs/llm/router.yaml"))
+        with open("configs/llm/router.yaml") as f:
+            yaml.safe_load(f)
         print("router.yaml: valid")
     except Exception as e:
         print("BREAK: router.yaml invalid YAML", e)
 
     try:
-        yaml.safe_load(open("configs/safety/permissions.yaml"))
+        with open("configs/safety/permissions.yaml") as f:
+            yaml.safe_load(f)
         print("permissions.yaml: valid")
     except Exception as e:
         print("BREAK: permissions.yaml invalid YAML", e)
@@ -120,7 +123,7 @@ def wait_for_server(base_url="http://localhost:8080"):
             if r.status_code == 200:
                 print("Server is READY!")
                 return True
-        except:
+        except Exception:
             pass
         time.sleep(1)
     print("Server failed to start")
@@ -170,7 +173,7 @@ def run_integration_tests(base_url="http://localhost:8080"):
 
     print("\n=== Task 1 --- Shell Execution ===")
     task1 = run_task(
-        "Create a temporary directory at c:\\temp\\orion_test, write the current date and hostname into a file called info.txt inside it, then read and print the file contents.",
+        "Create a temporary directory at c:\\temp\\orion_test, write the current date and hostname into a file called info.txt inside it, then read and print the file contents.",  # noqa: E501
         90,
         base_url,
     )
@@ -181,15 +184,23 @@ def run_integration_tests(base_url="http://localhost:8080"):
         print("Rollback Task 1:", rb.status_code, rb.text)
 
     print("\n=== Task 2 --- Multi-Step Reasoning ---")
-    task2 = run_task(
-        "Find the top 3 Python packages for async HTTP requests ranked by GitHub stars as of this year, compare their pros and cons in a structured table, then save a summary to long-term memory tagged 'async_http_libs'.",
+    _ = run_task(
+        (
+            "Find the top 3 Python packages for async HTTP requests ranked by GitHub stars "
+            "as of this year, compare their pros and cons in a structured table, then save "
+            "a summary to long-term memory tagged 'async_http_libs'."
+        ),
         150,
         base_url,
     )
 
     print("\n=== Task 3 --- GUI Vision Action ---")
-    task3 = run_task(
-        "Take a screenshot of the current desktop. Identify the taskbar or dock visible in the screenshot, return its bounding-box coordinates in JSON format, and describe what applications are pinned to it.",
+    _ = run_task(
+        (
+            "Take a screenshot of the current desktop. Identify the taskbar or dock "
+            "visible in the screenshot, return its bounding-box coordinates in "
+            "JSON format, and describe what applications are pinned to it."
+        ),
         150,
         base_url,
     )
@@ -199,7 +210,7 @@ def run_integration_tests(base_url="http://localhost:8080"):
         metrics_r = requests.get("http://localhost:9091/metrics")
         if metrics_r.ok:
             print("Prometheus /metrics exposed OK!")
-    except:
+    except Exception:
         print("Metrics endpoint not available")
 
 
@@ -220,9 +231,8 @@ def main():
         audit_configs()
     if args.mode in ("llm", "all"):
         audit_llm_reachability()
-    if args.mode == "integration":
-        if wait_for_server(args.base_url):
-            run_integration_tests(args.base_url)
+    if args.mode == "integration" and wait_for_server(args.base_url):
+        run_integration_tests(args.base_url)
 
 
 if __name__ == "__main__":

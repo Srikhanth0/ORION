@@ -57,17 +57,17 @@ def _extract_json_array(text: str) -> list | None:
     if not text:
         return None
     text = text.strip()
-    
+
     # Strip markdown blocks
     text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.MULTILINE)
     text = re.sub(r"\s*```$", "", text, flags=re.MULTILINE)
     text = text.strip()
-    
+
     start = text.find("[")
     end = text.rfind("]")
     if start == -1 or end == -1:
         return None
-    
+
     candidate = text[start : end + 1]
     try:
         return json.loads(candidate)
@@ -82,8 +82,8 @@ def _extract_json_array(text: str) -> list | None:
 
 class PlannerAgent(BaseOrionAgent):
     def __init__(
-        self, 
-        name: str = "Planner", 
+        self,
+        name: str = "Planner",
         model: Any = None,
         tool_registry: Any = None
     ) -> None:
@@ -129,7 +129,7 @@ Rules:
     async def reply(self, *args: Any, **kwargs: Any) -> Msg:
         default = Msg(name="user", role="user", content="{}")
         x: Msg = args[0] if args else kwargs.get("x", default)
-        
+
         content = x.content if isinstance(x.content, dict) else {"instruction": str(x.content)}
         instruction = content.get("instruction", "")
         retry_feedback = content.get("retry_feedback", "")
@@ -137,7 +137,7 @@ Rules:
 
         prompt = f"Instruction: {instruction}"
         if retry_feedback:
-            prompt += f"\n\nPrevious attempt #{retry_count} failed: {retry_feedback}\nAdjust the plan."
+            prompt += f"\n\nPrevious attempt #{retry_count} failed: {retry_feedback}\nAdjust the plan."  # noqa: E501
         prompt += "\n\nRespond with ONLY the JSON array:"
 
         for attempt in range(3):
@@ -149,7 +149,7 @@ Rules:
                     ]
                 )
                 raw = raw.strip()
-                    
+
                 if not raw:
                     logger.warning(
                         "planner_empty_response",

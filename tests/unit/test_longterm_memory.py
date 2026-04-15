@@ -1,10 +1,9 @@
 """Unit tests for LocalLongTermMemory and Retriever."""
 from __future__ import annotations
 
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock, patch
 
 import numpy as np
-
 import pytest
 
 from orion.memory.embedder import Embedder

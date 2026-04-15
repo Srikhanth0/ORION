@@ -14,6 +14,7 @@ Depends On
 - ``orion.orchestrator.pipeline`` (OrionPipeline)
 - ``orion.agents.executor`` (ExecutorAgent, topological_sort)
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -58,16 +59,12 @@ async def execute_dag(
     while pending:
         # Find tasks whose dependencies are all resolved
         ready = [
-            t for t in pending.values()
-            if all(dep in results for dep in t.get("depends_on", []))
+            t for t in pending.values() if all(dep in results for dep in t.get("depends_on", []))
         ]
 
         if not ready:
             remaining = list(pending.keys())
-            raise RuntimeError(
-                f"DAG has unsatisfiable dependencies. "
-                f"Stuck tasks: {remaining}"
-            )
+            raise RuntimeError(f"DAG has unsatisfiable dependencies. Stuck tasks: {remaining}")
 
         batch_num += 1
         ready_ids = [t["id"] for t in ready]
@@ -90,7 +87,7 @@ async def execute_dag(
         ]
         batch_results = await asyncio.gather(*coros, return_exceptions=True)
 
-        for task, result in zip(ready, batch_results):
+        for task, result in zip(ready, batch_results, strict=True):
             if isinstance(result, BaseException):
                 results[task["id"]] = {
                     "subtask_id": task["id"],

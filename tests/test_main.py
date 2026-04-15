@@ -1,8 +1,8 @@
-import asyncio
 import argparse
-import sys
-import os
+import asyncio
 import json
+import os
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -70,8 +70,9 @@ async def test_final_model():
 
 
 async def test_planner():
-    from orion.agents.planner import PlannerAgent
     from agentscope.message import Msg
+
+    from orion.agents.planner import PlannerAgent
 
     planner = PlannerAgent()
     msg = Msg(name="user", role="user", content="list files in current directory")
@@ -80,10 +81,11 @@ async def test_planner():
 
 
 async def test_full_pipeline():
-    from orion.agents.planner import PlannerAgent
-    from orion.agents.executor import ExecutorAgent
-    from orion.tools.registry import ToolRegistry
     from agentscope.message import Msg
+
+    from orion.agents.executor import ExecutorAgent
+    from orion.agents.planner import PlannerAgent
+    from orion.tools.registry import ToolRegistry
 
     registry = ToolRegistry.get_instance()
     registry.load_from_config()
@@ -104,10 +106,11 @@ async def test_full_pipeline():
 
 
 async def test_executor():
-    from orion.agents.planner import PlannerAgent
-    from orion.agents.executor import ExecutorAgent
-    from orion.tools.registry import ToolRegistry
     from agentscope.message import Msg
+
+    from orion.agents.executor import ExecutorAgent
+    from orion.agents.planner import PlannerAgent
+    from orion.tools.registry import ToolRegistry
 
     registry = ToolRegistry.get_instance()
     registry.load_from_config()
@@ -179,7 +182,7 @@ async def test_tool_mapping():
     registry.load_from_config()
     registry.register_os_tools()
     registry.register_vision_tools()
-    executor = ExecutorAgent(tool_registry=registry)
+    _executor = ExecutorAgent(tool_registry=registry)
     native_tools = getattr(registry, "_native_tools", {})
     print(f"Registry native tools: {list(native_tools.keys())}")
     tool_name = "execute_command"

@@ -4,6 +4,7 @@ DELETE /v1/tasks/{id}.
 
 Provides fine-grained SSE streaming for every pipeline stage.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -38,9 +39,7 @@ _task_queues: dict[str, asyncio.Queue[TaskEvent | None]] = {}
 _task_handles: dict[str, asyncio.Task[Any]] = {}
 
 # Concurrency limiter
-_MAX_CONCURRENT = int(
-    __import__("os").environ.get("MAX_CONCURRENT_TASKS", "5")
-)
+_MAX_CONCURRENT = int(__import__("os").environ.get("MAX_CONCURRENT_TASKS", "5"))
 _semaphore = asyncio.Semaphore(_MAX_CONCURRENT)
 
 
@@ -101,6 +100,7 @@ async def _run_pipeline(
 
                 # Import here to avoid circular deps
                 from orion.agentscope_config import init_agentscope
+
                 init_agentscope()
 
                 from agentscope.message import Msg
@@ -134,14 +134,18 @@ async def _run_pipeline(
                 )
 
                 # ── Step 1: Planner ──
-                _emit(queue, EventType.PLANNER_START, {
-                    "task_id": task_id,
-                })
+                _emit(
+                    queue,
+                    EventType.PLANNER_START,
+                    {
+                        "task_id": task_id,
+                    },
+                )
 
                 from orion.tools.registry import ToolRegistry
+
                 registry_config = (
-                    "configs/mcp/sandbox.yaml" if safe_mode 
-                    else "configs/mcp/servers.yaml"
+                    "configs/mcp/sandbox.yaml" if safe_mode else "configs/mcp/servers.yaml"
                 )
                 registry = ToolRegistry(config_path=registry_config)
                 registry.load_from_config()
@@ -157,19 +161,27 @@ async def _run_pipeline(
                     plan_data = json.loads(plan_msg.content)
                     subtasks = plan_data.get("subtasks", [])
                     for st in subtasks:
-                        _emit(queue, EventType.SUBTASK_QUEUED, {
-                            "id": st.get("id", ""),
-                            "action": st.get("action", ""),
-                            "tool": st.get("tool", ""),
-                            "depends_on": st.get("depends_on", []),
-                        })
+                        _emit(
+                            queue,
+                            EventType.SUBTASK_QUEUED,
+                            {
+                                "id": st.get("id", ""),
+                                "action": st.get("action", ""),
+                                "tool": st.get("tool", ""),
+                                "depends_on": st.get("depends_on", []),
+                            },
+                        )
                 except (json.JSONDecodeError, AttributeError):
                     subtasks = []
 
-                _emit(queue, EventType.STEP_DONE, {
-                    "step": "planner",
-                    "subtask_count": len(subtasks),
-                })
+                _emit(
+                    queue,
+                    EventType.STEP_DONE,
+                    {
+                        "step": "planner",
+                        "subtask_count": len(subtasks),
+                    },
+                )
 
                 # ── Step 2: Executor ──
                 executor = ExecutorAgent(tool_registry=registry)
@@ -179,12 +191,16 @@ async def _run_pipeline(
                 try:
                     results = json.loads(exec_msg.content)
                     for r in results:
-                        _emit(queue, EventType.SUBTASK_RESULT, {
-                            "id": r.get("subtask_id", ""),
-                            "success": r.get("ok", False),
-                            "output": str(r.get("output", ""))[:200],
-                            "duration_ms": r.get("duration_ms", 0),
-                        })
+                        _emit(
+                            queue,
+                            EventType.SUBTASK_RESULT,
+                            {
+                                "id": r.get("subtask_id", ""),
+                                "success": r.get("ok", False),
+                                "output": str(r.get("output", ""))[:200],
+                                "duration_ms": r.get("duration_ms", 0),
+                            },
+                        )
                 except (json.JSONDecodeError, AttributeError):
                     results = []
 
@@ -194,51 +210,67 @@ async def _run_pipeline(
 
                 try:
                     verify_data = json.loads(verify_msg.content)
-                    _emit(queue, EventType.VERIFIER_RESULT, {
-                        "status": verify_data.get("status", ""),
-                        "pass": verify_data.get("status") == "PASS",
-                        "issues": verify_data.get("issues", [])[:5],
-                    })
+                    _emit(
+                        queue,
+                        EventType.VERIFIER_RESULT,
+                        {
+                            "status": verify_data.get("status", ""),
+                            "pass": verify_data.get("status") == "PASS",
+                            "issues": verify_data.get("issues", [])[:5],
+                        },
+                    )
                 except (json.JSONDecodeError, AttributeError):
-                    _emit(queue, EventType.VERIFIER_RESULT, {
-                        "pass": True,
-                        "raw": str(verify_msg.content)[:200],
-                    })
+                    _emit(
+                        queue,
+                        EventType.VERIFIER_RESULT,
+                        {
+                            "pass": True,
+                            "raw": str(verify_msg.content)[:200],
+                        },
+                    )
 
                 # ── Step 4: Supervisor ──
                 supervisor = SupervisorAgent()
-                final_msg = await supervisor.reply(
-                    verify_msg
-                )
+                final_msg = await supervisor.reply(verify_msg)
 
                 try:
                     decision_data = json.loads(final_msg.content)
-                    _emit(queue, EventType.SUPERVISOR_DECISION, {
-                        "decision": decision_data.get("decision", ""),
-                    })
+                    _emit(
+                        queue,
+                        EventType.SUPERVISOR_DECISION,
+                        {
+                            "decision": decision_data.get("decision", ""),
+                        },
+                    )
                 except (json.JSONDecodeError, AttributeError):
-                    _emit(queue, EventType.SUPERVISOR_DECISION, {
-                        "decision": "complete",
-                    })
+                    _emit(
+                        queue,
+                        EventType.SUPERVISOR_DECISION,
+                        {
+                            "decision": "complete",
+                        },
+                    )
 
                 _tasks[task_id]["status"] = TaskStatus.DONE
                 _tasks[task_id]["result"] = {
                     "output": final_msg.content[:2000],
                 }
 
-                _emit(queue, EventType.DONE, {
-                    "task_id": task_id,
-                    "status": "DONE",
-                })
+                _emit(
+                    queue,
+                    EventType.DONE,
+                    {
+                        "task_id": task_id,
+                        "status": "DONE",
+                    },
+                )
 
             finally:
                 _semaphore.release()
 
     except TimeoutError:
         _tasks[task_id]["status"] = TaskStatus.FAILED
-        _tasks[task_id]["result"] = {
-            "error": f"Task timed out after {timeout}s"
-        }
+        _tasks[task_id]["result"] = {"error": f"Task timed out after {timeout}s"}
     except asyncio.CancelledError:
         _tasks[task_id]["status"] = TaskStatus.CANCELLED
     except Exception as exc:
@@ -248,9 +280,7 @@ async def _run_pipeline(
             error=str(exc),
         )
         _tasks[task_id]["status"] = TaskStatus.FAILED
-        _tasks[task_id]["result"] = {
-            "error": str(exc)[:500]
-        }
+        _tasks[task_id]["result"] = {"error": str(exc)[:500]}
     finally:
         if queue:
             await queue.put(None)  # Signal stream end
@@ -261,9 +291,7 @@ async def _run_pipeline(
     response_model=TaskResponse,
     status_code=202,
 )
-async def submit_task(
-    body: TaskRequest, request: Request
-) -> TaskResponse:
+async def submit_task(body: TaskRequest, request: Request) -> TaskResponse:
     """Submit a new task for async execution.
 
     Returns 202 Accepted with task_id for polling.
@@ -277,10 +305,7 @@ async def submit_task(
                 type="/errors/too-many-tasks",
                 title="Too Many Tasks",
                 status=429,
-                detail=(
-                    f"Max {_MAX_CONCURRENT} concurrent "
-                    "tasks. Retry later."
-                ),
+                detail=(f"Max {_MAX_CONCURRENT} concurrent tasks. Retry later."),
             ).model_dump(),
             headers={"Retry-After": "30"},
         )
@@ -355,9 +380,7 @@ async def get_task(task_id: str) -> TaskDetailResponse:
 
 
 @router.get("/{task_id}/stream")
-async def stream_task(
-    task_id: str, request: Request
-) -> EventSourceResponse:
+async def stream_task(task_id: str, request: Request) -> EventSourceResponse:
     """SSE stream of task events.
 
     Emits fine-grained events for every pipeline stage:
@@ -369,17 +392,13 @@ async def stream_task(
 
     queue = _task_queues.get(task_id)
     if queue is None:
-        raise HTTPException(
-            404, "Stream not available"
-        )
+        raise HTTPException(404, "Stream not available")
 
     async def event_generator():
         heartbeat_interval = 15
         while True:
             try:
-                event = await asyncio.wait_for(
-                    queue.get(), timeout=heartbeat_interval
-                )
+                event = await asyncio.wait_for(queue.get(), timeout=heartbeat_interval)
             except TimeoutError:
                 yield {"comment": "keep-alive"}
                 continue
@@ -443,7 +462,7 @@ async def rollback_task(task_id: str) -> JSONResponse:
             task_id=task_id,
             error=str(exc),
         )
-        raise HTTPException(500, f"Rollback failed: {exc}")
+        raise HTTPException(500, f"Rollback failed: {exc}") from exc
 
 
 @router.delete("/{task_id}", status_code=204)

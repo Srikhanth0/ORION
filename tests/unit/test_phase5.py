@@ -5,13 +5,12 @@ from __future__ import annotations
 
 import asyncio
 import json
-import time
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
-from orion.api.schemas import EventType, TaskEvent
+from orion.api.schemas import EventType
 from orion.llm.router import CircuitBreaker, CircuitBreakerState
 from orion.observability.logger import TaskContextFilter, configure_logging
 from orion.observability.metrics import (
@@ -21,7 +20,6 @@ from orion.observability.metrics import (
     record_vision_call,
 )
 from orion.safety.rollback import RollbackEngine
-
 
 # ── Circuit Breaker Tests ────────────────────────────────
 
@@ -190,7 +188,7 @@ class TestMCPRetry:
 
     @pytest.mark.asyncio
     async def test_retry_on_failure(self) -> None:
-        from orion.tools.mcp_client import MCPClient, ToolResult
+        from orion.tools.mcp_client import MCPClient
 
         mock_registry = MagicMock()
         mock_registry.get.return_value = MagicMock(
@@ -266,7 +264,6 @@ class TestEvalSuite:
     """Test eval fixture completeness."""
 
     def test_25_tasks_loaded(self) -> None:
-        import json
         from pathlib import Path
 
         fixtures = Path(__file__).resolve().parent.parent / "fixtures" / "sample_tasks.json"
@@ -274,7 +271,6 @@ class TestEvalSuite:
         assert len(tasks) == 25
 
     def test_all_categories_covered(self) -> None:
-        import json
         from pathlib import Path
 
         fixtures = Path(__file__).resolve().parent.parent / "fixtures" / "sample_tasks.json"
@@ -288,7 +284,6 @@ class TestEvalSuite:
         assert "error" in categories
 
     def test_error_tasks_expect_failure(self) -> None:
-        import json
         from pathlib import Path
 
         fixtures = Path(__file__).resolve().parent.parent / "fixtures" / "sample_tasks.json"

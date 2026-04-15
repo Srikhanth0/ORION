@@ -2,11 +2,9 @@
 
 These tools work without npx/node and provide core file operations.
 """
+
 from __future__ import annotations
 
-import asyncio
-import json
-import os
 import shutil
 from pathlib import Path
 from typing import Any
@@ -14,10 +12,10 @@ from typing import Any
 
 async def list_directory(path: str = ".") -> dict[str, Any]:
     """List files and directories in a path.
-    
+
     Args:
         path: Directory to list (default: current dir)
-        
+
     Returns:
         Dict with files list and metadata
     """
@@ -26,24 +24,26 @@ async def list_directory(path: str = ".") -> dict[str, Any]:
         return {"error": f"Path does not exist: {path}"}
     if not p.is_dir():
         return {"error": f"Path is not a directory: {path}"}
-    
+
     items = []
     for item in p.iterdir():
-        items.append({
-            "name": item.name,
-            "type": "dir" if item.is_dir() else "file",
-            "size": item.stat().st_size if item.is_file() else 0,
-        })
-    
+        items.append(
+            {
+                "name": item.name,
+                "type": "dir" if item.is_dir() else "file",
+                "size": item.stat().st_size if item.is_file() else 0,
+            }
+        )
+
     return {"path": str(p), "items": items, "count": len(items)}
 
 
 async def read_text_file(path: str) -> dict[str, Any]:
     """Read text file contents.
-    
+
     Args:
         path: File path to read
-        
+
     Returns:
         Dict with file contents or error
     """
@@ -52,7 +52,7 @@ async def read_text_file(path: str) -> dict[str, Any]:
         return {"error": f"File does not exist: {path}"}
     if not p.is_file():
         return {"error": f"Path is not a file: {path}"}
-    
+
     try:
         content = p.read_text(encoding="utf-8")
         return {"path": str(p), "content": content, "size": len(content)}
@@ -62,11 +62,11 @@ async def read_text_file(path: str) -> dict[str, Any]:
 
 async def write_file(path: str, content: str) -> dict[str, Any]:
     """Write/create a file with content.
-    
+
     Args:
         path: File path to write
         content: Text content to write
-        
+
     Returns:
         Dict with success status or error
     """
@@ -81,10 +81,10 @@ async def write_file(path: str, content: str) -> dict[str, Any]:
 
 async def create_directory(path: str) -> dict[str, Any]:
     """Create a directory.
-    
+
     Args:
         path: Directory path to create
-        
+
     Returns:
         Dict with success status or error
     """
@@ -98,38 +98,38 @@ async def create_directory(path: str) -> dict[str, Any]:
 
 async def search_files(path: str = ".", pattern: str = "*") -> dict[str, Any]:
     """Search for files matching a pattern.
-    
+
     Args:
         path: Directory to search in
         pattern: Glob pattern (e.g., "*.py")
-        
+
     Returns:
         Dict with matching files
     """
     p = Path(path).expanduser()
     if not p.exists():
         return {"error": f"Path does not exist: {path}"}
-    
+
     matches = []
     for m in p.glob(pattern):
         matches.append(str(m))
-    
+
     return {"path": str(p), "pattern": pattern, "matches": matches, "count": len(matches)}
 
 
 async def get_file_info(path: str) -> dict[str, Any]:
     """Get file/directory metadata.
-    
+
     Args:
         path: File or directory path
-        
+
     Returns:
         Dict with metadata
     """
     p = Path(path).expanduser()
     if not p.exists():
         return {"error": f"Path does not exist: {path}"}
-    
+
     stat = p.stat()
     return {
         "path": str(p),
@@ -142,17 +142,17 @@ async def get_file_info(path: str) -> dict[str, Any]:
 
 async def move_file(src: str, dst: str) -> dict[str, Any]:
     """Move/rename a file or directory.
-    
+
     Args:
         src: Source path
         dst: Destination path
-        
+
     Returns:
         Dict with success status
     """
     src_p = Path(src).expanduser()
     dst_p = Path(dst).expanduser()
-    
+
     try:
         shutil.move(str(src_p), str(dst_p))
         return {"from": str(src_p), "to": str(dst_p), "moved": True}
@@ -169,9 +169,7 @@ NATIVE_OS_TOOL_DEFINITIONS = [
         "is_destructive": False,
         "params_schema": {
             "type": "object",
-            "properties": {
-                "path": {"type": "string", "description": "Directory path"}
-            }
+            "properties": {"path": {"type": "string", "description": "Directory path"}},
         },
     },
     {
@@ -181,10 +179,8 @@ NATIVE_OS_TOOL_DEFINITIONS = [
         "is_destructive": False,
         "params_schema": {
             "type": "object",
-            "properties": {
-                "path": {"type": "string", "description": "File path"}
-            },
-            "required": ["path"]
+            "properties": {"path": {"type": "string", "description": "File path"}},
+            "required": ["path"],
         },
     },
     {
@@ -196,9 +192,9 @@ NATIVE_OS_TOOL_DEFINITIONS = [
             "type": "object",
             "properties": {
                 "path": {"type": "string", "description": "File path"},
-                "content": {"type": "string", "description": "File content"}
+                "content": {"type": "string", "description": "File content"},
             },
-            "required": ["path", "content"]
+            "required": ["path", "content"],
         },
     },
     {
@@ -208,10 +204,8 @@ NATIVE_OS_TOOL_DEFINITIONS = [
         "is_destructive": True,
         "params_schema": {
             "type": "object",
-            "properties": {
-                "path": {"type": "string", "description": "Directory path"}
-            },
-            "required": ["path"]
+            "properties": {"path": {"type": "string", "description": "Directory path"}},
+            "required": ["path"],
         },
     },
     {
@@ -223,8 +217,8 @@ NATIVE_OS_TOOL_DEFINITIONS = [
             "type": "object",
             "properties": {
                 "path": {"type": "string", "description": "Directory to search"},
-                "pattern": {"type": "string", "description": "Glob pattern"}
-            }
+                "pattern": {"type": "string", "description": "Glob pattern"},
+            },
         },
     },
     {
@@ -234,10 +228,8 @@ NATIVE_OS_TOOL_DEFINITIONS = [
         "is_destructive": False,
         "params_schema": {
             "type": "object",
-            "properties": {
-                "path": {"type": "string", "description": "File/directory path"}
-            },
-            "required": ["path"]
+            "properties": {"path": {"type": "string", "description": "File/directory path"}},
+            "required": ["path"],
         },
     },
     {
@@ -249,9 +241,9 @@ NATIVE_OS_TOOL_DEFINITIONS = [
             "type": "object",
             "properties": {
                 "src": {"type": "string", "description": "Source path"},
-                "dst": {"type": "string", "description": "Destination path"}
+                "dst": {"type": "string", "description": "Destination path"},
             },
-            "required": ["src", "dst"]
+            "required": ["src", "dst"],
         },
     },
 ]

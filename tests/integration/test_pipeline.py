@@ -14,11 +14,9 @@ that captures every event and surfaces granular failure points.
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
-from dataclasses import dataclass, field
-from typing import AsyncIterator
+from dataclasses import dataclass
 
 import httpx
 import pytest
@@ -39,7 +37,7 @@ class TaskEvent:
     timestamp: str | None   = None
 
     @classmethod
-    def from_sse_line(cls, line: str) -> "TaskEvent | None":
+    def from_sse_line(cls, line: str) -> TaskEvent | None:
         if not line.startswith("data:"):
             return None
         try:
@@ -72,32 +70,31 @@ async def stream_task_events(
     terminal_statuses = {"completed", "failed", "cancelled"}
 
     try:
-        async with httpx.AsyncClient(timeout=timeout_seconds) as client:
-            async with client.stream(
-                "GET",
-                f"{BASE_URL}/v1/tasks/{task_id}/stream",
-                headers={"Accept": "text/event-stream"},
-            ) as response:
-                response.raise_for_status()
+        async with httpx.AsyncClient(timeout=timeout_seconds) as client, client.stream(
+            "GET",
+            f"{BASE_URL}/v1/tasks/{task_id}/stream",
+            headers={"Accept": "text/event-stream"},
+        ) as response:
+            response.raise_for_status()
 
-                async for line in response.aiter_lines():
-                    line = line.strip()
-                    if not line:
-                        continue
+            async for line in response.aiter_lines():
+                line = line.strip()
+                if not line:
+                    continue
 
-                    event = TaskEvent.from_sse_line(line)
-                    if event is None:
-                        continue
+                event = TaskEvent.from_sse_line(line)
+                if event is None:
+                    continue
 
-                    events.append(event)
-                    log.debug("[%s/%s] %s: %s",
-                              event.agent, event.subtask_id,
-                              event.event_type, event.content[:80])
+                events.append(event)
+                log.debug("[%s/%s] %s: %s",
+                          event.agent, event.subtask_id,
+                          event.event_type, event.content[:80])
 
-                    # Stop consuming when we hit a terminal event
-                    if event.event_type == "status" and event.content in terminal_statuses:
-                        log.info("Task %s reached terminal status: %s", task_id, event.content)
-                        break
+                # Stop consuming when we hit a terminal event
+                if event.event_type == "status" and event.content in terminal_statuses:
+                    log.info("Task %s reached terminal status: %s", task_id, event.content)
+                    break
 
     except httpx.ReadTimeout:
         log.error(
@@ -195,7 +192,7 @@ async def test_task3_gui_vision():
     final = get_final_status(events)
     if final == "failed":
         # Check if it failed on the vision tool specifically (ngrok not up) vs something else
-        vision_errors = [e for e in events if "vision" in e.content.lower() or "ngrok" in e.content.lower()]
+        vision_errors = [e for e in events if "vision" in e.content.lower() or "ngrok" in e.content.lower()]  # noqa: E501
         if vision_errors:
             pytest.skip("Task 3 skipped — Vision API tunnel (ngrok) not reachable on this host")
         pytest.fail(f"Task 3 failed for non-vision reason: {get_last_agent(events)!r}")

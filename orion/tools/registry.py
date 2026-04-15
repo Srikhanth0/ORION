@@ -14,10 +14,13 @@ Depends On
 - ``mcp`` SDK (ClientSession, StdioServerParameters, stdio_client)
 - ``orion.core.exceptions`` (ToolNotFoundError)
 """
+
 from __future__ import annotations
 
 import enum
 import os
+import shutil
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -28,9 +31,6 @@ from orion.core.exceptions import ToolNotFoundError
 
 logger = structlog.get_logger(__name__)
 
-# ORION-FIX: Resolve platform-correct binary names for uvx/npx on Windows
-import shutil
-import sys
 
 def _resolve_bin(name: str) -> str:
     """Return the correct executable name for the current platform."""
@@ -40,6 +40,7 @@ def _resolve_bin(name: str) -> str:
         if shutil.which(cmd_variant):
             return cmd_variant
     return name  # Linux / WSL2 / macOS — name is correct as-is
+
 
 UVX_BIN = _resolve_bin("uvx")
 NPX_BIN = _resolve_bin("npx")
@@ -58,10 +59,20 @@ class ToolCategory(enum.StrEnum):
     VISION = "vision"
 
 
-_DESTRUCTIVE_PATTERNS = frozenset({
-    "delete", "remove", "kill", "drop", "destroy",
-    "purge", "truncate", "wipe", "erase", "uninstall",
-})
+_DESTRUCTIVE_PATTERNS = frozenset(
+    {
+        "delete",
+        "remove",
+        "kill",
+        "drop",
+        "destroy",
+        "purge",
+        "truncate",
+        "wipe",
+        "erase",
+        "uninstall",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -138,7 +149,8 @@ class ToolRegistry:
     _instance: ToolRegistry | None = None
 
     def __init__(
-        self, config_path: str | Path | None = None,
+        self,
+        config_path: str | Path | None = None,
         api_key: str | None = None,
     ) -> None:
         self._config_path = Path(config_path) if config_path else _DEFAULT_CONFIG
@@ -153,7 +165,8 @@ class ToolRegistry:
 
     @classmethod
     def get_instance(
-        cls, api_key: str | None = None,
+        cls,
+        api_key: str | None = None,
     ) -> ToolRegistry:
         """Get or create the singleton instance.
 
@@ -173,7 +186,8 @@ class ToolRegistry:
         cls._instance = None
 
     def load_from_config(
-        self, config_path: str | Path | None = None,
+        self,
+        config_path: str | Path | None = None,
     ) -> None:
         """Load MCP server definitions from YAML config.
 
@@ -236,7 +250,8 @@ class ToolRegistry:
             )
 
     def load(
-        self, enabled_apps: list[str] | None = None,
+        self,
+        enabled_apps: list[str] | None = None,
     ) -> None:
         """Legacy load method — delegates to load_from_config.
 
@@ -323,15 +338,8 @@ class ToolRegistry:
                 wrapper = MCPToolWrapper(
                     name=tool.name,
                     description=(tool.description or "")[:200],
-                    params_schema=(
-                        tool.inputSchema
-                        if isinstance(tool.inputSchema, dict)
-                        else {}
-                    ),
-                    is_destructive=any(
-                        p in tool.name.lower()
-                        for p in _DESTRUCTIVE_PATTERNS
-                    ),
+                    params_schema=(tool.inputSchema if isinstance(tool.inputSchema, dict) else {}),
+                    is_destructive=any(p in tool.name.lower() for p in _DESTRUCTIVE_PATTERNS),
                     category=self._infer_category(tool.name),
                     cost_estimate=0.001,
                     server_category=category,
@@ -577,9 +585,7 @@ class ToolRegistry:
             Newline-separated tool descriptions.
         """
         lines = []
-        for tool in sorted(
-            self._tools.values(), key=lambda t: t.name
-        ):
+        for tool in sorted(self._tools.values(), key=lambda t: t.name):
             destructive = "T" if tool.is_destructive else "F"
             lines.append(
                 f"{tool.name}: {tool.description} "
@@ -588,9 +594,7 @@ class ToolRegistry:
             )
         return "\n".join(lines)
 
-    def score(
-        self, subtask_desc: str, top_k: int = 5
-    ) -> list[ScoredTool]:
+    def score(self, subtask_desc: str, top_k: int = 5) -> list[ScoredTool]:
         """Score tools by semantic similarity to a subtask.
 
         Uses sentence-transformers all-MiniLM-L6-v2 for embedding.
@@ -638,25 +642,35 @@ class ToolRegistry:
             return ToolCategory.GITHUB
         if any(
             upper.startswith(p)
-            for p in ("SHELL", "FILE", "OS", "CMD",
-                       "READ", "WRITE", "LIST", "SEARCH",
-                       "CREATE_DIR", "MOVE")
+            for p in (
+                "SHELL",
+                "FILE",
+                "OS",
+                "CMD",
+                "READ",
+                "WRITE",
+                "LIST",
+                "SEARCH",
+                "CREATE_DIR",
+                "MOVE",
+            )
         ):
             return ToolCategory.OS
         if upper.startswith("BROWSER"):
             return ToolCategory.BROWSER
         if any(
             upper.startswith(p)
-            for p in ("TAKE_SCREENSHOT", "ANALYZE_SCREEN",
-                       "CLICK_ELEMENT", "TYPE_TEXT", "PRESS_KEY",
-                       "VISION")
+            for p in (
+                "TAKE_SCREENSHOT",
+                "ANALYZE_SCREEN",
+                "CLICK_ELEMENT",
+                "TYPE_TEXT",
+                "PRESS_KEY",
+                "VISION",
+            )
         ):
             return ToolCategory.VISION
-        if any(
-            upper.startswith(p)
-            for p in ("SLACK", "LINEAR", "NOTION", "GMAIL",
-                       "CALENDAR")
-        ):
+        if any(upper.startswith(p) for p in ("SLACK", "LINEAR", "NOTION", "GMAIL", "CALENDAR")):
             return ToolCategory.SAAS
         return ToolCategory.SYSTEM
 
@@ -670,19 +684,16 @@ class ToolRegistry:
             MCPToolWrapper instance.
         """
         name = getattr(raw_tool, "name", str(raw_tool))
-        description = getattr(
-            raw_tool, "description", "No description"
-        )
+        description = getattr(raw_tool, "description", "No description")
         params_schema = getattr(
-            raw_tool, "parameters",
+            raw_tool,
+            "parameters",
             getattr(raw_tool, "inputSchema", {}),
         )
 
         # Detect destructiveness from name
         name_lower = name.lower()
-        is_destructive = any(
-            p in name_lower for p in _DESTRUCTIVE_PATTERNS
-        )
+        is_destructive = any(p in name_lower for p in _DESTRUCTIVE_PATTERNS)
 
         # Infer category from name
         category = self._infer_category(name)
@@ -690,18 +701,13 @@ class ToolRegistry:
         return MCPToolWrapper(
             name=name,
             description=description[:200],
-            params_schema=(
-                params_schema if isinstance(params_schema, dict)
-                else {}
-            ),
+            params_schema=(params_schema if isinstance(params_schema, dict) else {}),
             is_destructive=is_destructive,
             category=category,
             cost_estimate=0.001,
         )
 
-    def _semantic_score(
-        self, desc: str, top_k: int
-    ) -> list[ScoredTool]:
+    def _semantic_score(self, desc: str, top_k: int) -> list[ScoredTool]:
         """Score via sentence-transformer embeddings.
 
         Args:
@@ -715,18 +721,12 @@ class ToolRegistry:
             from sentence_transformers import (
                 SentenceTransformer,
             )
-            self._embed_model = SentenceTransformer(
-                "all-MiniLM-L6-v2"
-            )
+
+            self._embed_model = SentenceTransformer("all-MiniLM-L6-v2")
 
         if self._embeddings is None:
-            texts = [
-                f"{t.name} {t.description}"
-                for t in self._tools.values()
-            ]
-            self._embeddings = (
-                self._embed_model.encode(texts)
-            )
+            texts = [f"{t.name} {t.description}" for t in self._tools.values()]
+            self._embeddings = self._embed_model.encode(texts)
 
         import numpy as np
 
@@ -737,21 +737,14 @@ class ToolRegistry:
         for i, tool in enumerate(tools_list):
             emb = self._embeddings[i]
             cos_sim = float(
-                np.dot(query_emb, emb)
-                / (
-                    np.linalg.norm(query_emb)
-                    * np.linalg.norm(emb)
-                    + 1e-8
-                )
+                np.dot(query_emb, emb) / (np.linalg.norm(query_emb) * np.linalg.norm(emb) + 1e-8)
             )
             scores.append(ScoredTool(tool=tool, score=cos_sim))
 
         scores.sort(key=lambda s: s.score, reverse=True)
         return scores[:top_k]
 
-    def _keyword_score(
-        self, desc: str, top_k: int
-    ) -> list[ScoredTool]:
+    def _keyword_score(self, desc: str, top_k: int) -> list[ScoredTool]:
         """Fallback keyword-based scoring.
 
         Args:
@@ -765,9 +758,7 @@ class ToolRegistry:
         scored = []
 
         for tool in self._tools.values():
-            tool_words = set(
-                f"{tool.name} {tool.description}".lower().split()
-            )
+            tool_words = set(f"{tool.name} {tool.description}".lower().split())
             overlap = len(desc_words & tool_words)
             total = len(desc_words | tool_words) or 1
             score = overlap / total

@@ -16,6 +16,7 @@ Depends On
 - ``orion.llm.health`` (HealthMonitor)
 - ``orion.core.exceptions`` (AllProvidersExhaustedError, LLMError, QuotaExceededError)
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -103,9 +104,12 @@ class CircuitBreaker:
     @property
     def state(self) -> str:
         """Return the current state, auto-transitioning OPEN→HALF_OPEN."""
-        if self._state == CircuitBreakerState.OPEN and self._opened_at is not None:
-            if (time.monotonic() - self._opened_at) >= self._recovery_timeout:
-                return CircuitBreakerState.HALF_OPEN
+        if (
+            self._state == CircuitBreakerState.OPEN
+            and self._opened_at is not None
+            and (time.monotonic() - self._opened_at) >= self._recovery_timeout
+        ):
+            return CircuitBreakerState.HALF_OPEN
         return self._state
 
     @property
@@ -295,9 +299,7 @@ class AdaptiveLLMRouter:
 
                 # Success — reset circuit breaker and mark healthy
                 await cb.record_success()
-                await self._health_monitor.set_status(
-                    provider_name, ProviderStatus.HEALTHY
-                )
+                await self._health_monitor.set_status(provider_name, ProviderStatus.HEALTHY)
 
                 return response
 
@@ -315,9 +317,7 @@ class AdaptiveLLMRouter:
                 tripped = await cb.record_failure()
 
                 if tripped:
-                    await self._health_monitor.set_status(
-                        provider_name, ProviderStatus.UNAVAILABLE
-                    )
+                    await self._health_monitor.set_status(provider_name, ProviderStatus.UNAVAILABLE)
 
                 logger.warning(
                     "provider_call_failed",
@@ -413,19 +413,23 @@ class AdaptiveLLMRouter:
             )
 
         # Retry with error feedback
-        augmented.append({
-            "role": "assistant",
-            "content": response.content,
-        })
-        augmented.append({
-            "role": "user",
-            "content": (
-                f"Your response was not valid JSON matching the schema. "
-                f"Error: {parse_error}\n\n"
-                f"Please fix the JSON and respond again with ONLY the "
-                f"corrected JSON object."
-            ),
-        })
+        augmented.append(
+            {
+                "role": "assistant",
+                "content": response.content,
+            }
+        )
+        augmented.append(
+            {
+                "role": "user",
+                "content": (
+                    f"Your response was not valid JSON matching the schema. "
+                    f"Error: {parse_error}\n\n"
+                    f"Please fix the JSON and respond again with ONLY the "
+                    f"corrected JSON object."
+                ),
+            }
+        )
 
         response2 = await self.chat(
             augmented,

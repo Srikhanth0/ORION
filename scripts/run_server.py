@@ -1,7 +1,8 @@
 import argparse
-import uvicorn
-import sys
 import os
+import sys
+
+import uvicorn
 
 sys.path.insert(0, "C:/Users/srikh/Downloads/ORION")
 os.chdir("C:/Users/srikh/Downloads/ORION")
