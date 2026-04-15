@@ -27,7 +27,7 @@ class MemoryRetriever:
     """Unified retrieval across working and long-term memory.
 
     Combines in-context working memory with semantic search
-    over the long-term Qdrant store.
+    over the long-term ChromaDB store.
 
     Args:
         working: WorkingMemory for the current task.

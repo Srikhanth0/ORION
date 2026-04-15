@@ -3,7 +3,7 @@
 
 Checks:
   1. API server is responding
-  2. Qdrant is reachable
+  2. ChromaDB is healthy
   3. Tool registry is loaded
   4. Prometheus metrics endpoint is up
 
@@ -39,6 +39,24 @@ def check_endpoint(
             return status == 200
     except Exception as exc:
         print(f"  ✗ {name}: {exc}")
+        return False
+
+
+def check_chromadb() -> bool:
+    """Check if ChromaDB can be instantiated.
+
+    Returns:
+        True if healthy.
+    """
+    try:
+        import chromadb
+
+        client = chromadb.PersistentClient(path=".orion_memory")
+        client.heartbeat()
+        print("  ✓ ChromaDB: healthy")
+        return True
+    except Exception as exc:
+        print(f"  ✗ ChromaDB: {exc}")
         return False
 
 
@@ -82,13 +100,8 @@ def main() -> int:
         )
     )
 
-    # 4. Qdrant direct
-    results.append(
-        check_endpoint(
-            "http://localhost:6333/healthz",
-            "Qdrant",
-        )
-    )
+    # 4. ChromaDB local
+    results.append(check_chromadb())
 
     print()
     passed = sum(results)
@@ -100,3 +113,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+

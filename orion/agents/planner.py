@@ -3,216 +3,191 @@
 Receives a natural language instruction and produces a structured
 execution plan as a TaskDAG-compatible JSON. Uses chain-of-thought
 reasoning with tool awareness.
-
-Module Contract
----------------
-- **Input**: Msg with task instruction in content, orion_meta in metadata.
-- **Output**: Msg with JSON plan in content (subtasks array with depends_on).
-- **LLM Usage**: Full ReAct prompting via planner_system.j2.
-
-Depends On
-----------
-- ``orion.agents.base`` (BaseOrionAgent)
-- ``orion.core.task`` (Subtask, TaskDAG)
 """
 from __future__ import annotations
 
+import asyncio
 import json
-import platform
-from pathlib import Path
+import re
 from typing import Any
 
 import structlog
 from agentscope.message import Msg
 
 from orion.agents.base import BaseOrionAgent
-from orion.core.exceptions import PlanError
+from orion.agentscope_config import build_model
 
 logger = structlog.get_logger(__name__)
 
+_SYSTEM_PROMPT = """\
+You are ORION's Planner. Decompose the user instruction into a JSON array of subtasks.
+
+CRITICAL: Your ENTIRE response must be a single valid JSON array. No prose, no markdown, \
+no code fences. Start with [ and end with ].
+
+Each subtask:
+{"id":"t1","description":"...","tool":"list_directory","params":{"path":"."},"depends_on":[]}
+
+AVAILABLE TOOLS - Use these exact names:
+- list_directory(path) - List files in a directory
+- read_text_file(path) - Read a text file
+- write_file(path, content) - Write/create a file
+- create_directory(path) - Create a directory
+- search_files(path, pattern) - Search for files
+- get_file_info(path) - Get file metadata
+- move_file(src, dst) - Move/rename a file
+- analyze_screen(prompt) - Analyze screen with vision
+- click_element(description) - Click UI element
+- type_text(text) - Type text
+- press_key(key) - Press keyboard key
+- browser_navigate(url) - Navigate browser
+- browser_click(selector) - Click browser element
+- browser_type(text) - Type in browser
+
+Rules:
+1. depends_on = list of task ids that must finish first. Use [] for parallel tasks.
+2. One tool call per subtask.
+3. Use correct tool names ONLY from the list above.
+4. Return ONLY the JSON array — no other text whatsoever.
+"""
+
+
+def _extract_json_array(text: str) -> list | None:
+    """Extract a JSON array from model output, tolerating prose/fences."""
+    if not text:
+        return None
+    text = text.strip()
+    
+    # Strip markdown blocks
+    text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.MULTILINE)
+    text = re.sub(r"\s*```$", "", text, flags=re.MULTILINE)
+    text = text.strip()
+    
+    start = text.find("[")
+    end = text.rfind("]")
+    if start == -1 or end == -1:
+        return None
+    
+    candidate = text[start : end + 1]
+    try:
+        return json.loads(candidate)
+    except json.JSONDecodeError:
+        # Try to fix common LLM mistakes (like trailing commas before ])
+        try:
+            fixed = re.sub(r",\s*\]", "]", candidate)
+            return json.loads(fixed)
+        except json.JSONDecodeError:
+            return None
+
 
 class PlannerAgent(BaseOrionAgent):
-    """ReAct-style planner that decomposes tasks into executable DAGs.
-
-    Uses chain-of-thought reasoning to produce structured JSON plans.
-    Each plan includes a reasoning chain and an array of subtasks with
-    tool bindings, parameters, dependencies, and destructiveness flags.
-
-    Args:
-        model: OrionModelWrapper instance.
-        available_tools: List of tool descriptions for the prompt.
-        max_subtasks: Maximum subtasks per plan (guard rail).
-        max_retries: Maximum LLM retries on parse failure.
-    """
-
     def __init__(
-        self,
+        self, 
+        name: str = "Planner", 
         model: Any = None,
-        available_tools: list[dict[str, Any]] | None = None,
-        max_subtasks: int = 20,
-        max_retries: int = 2,
+        tool_registry: Any = None
     ) -> None:
+        model = model or build_model()
         super().__init__(
-            agent_name="planner",
+            agent_name=name,
             model=model,
-            prompt_template="planner_system.j2",
+            prompt_template=None,
         )
-        self._available_tools = available_tools or []
-        self._max_subtasks = max_subtasks
-        self._max_retries = max_retries
+        self._tool_registry = tool_registry
+        self.sys_prompt = self._build_sys_prompt()
 
-    async def reply(self, *args: Any, **kwargs: Any) -> Msg:
-        """Generate an execution plan from a task instruction.
-
-        Args:
-            *args: First positional arg should be the input Msg.
-            **kwargs: Additional keyword args.
-
-        Returns:
-            Msg with structured JSON plan in content.
-
-        Raises:
-            PlanError: If planning fails after retries.
-        """
-        default = Msg(name="user", role="user", content="")
-        x: Msg = args[0] if args else kwargs.get("x", default)
-        meta = self._get_orion_meta(x)
-        task_id = meta["task_id"]
-        instruction = x.content if isinstance(x.content, str) else str(x.content)
-
-        logger.info(
-            "planner_started",
-            task_id=task_id,
-            instruction=instruction[:100],
-        )
-
-        # Build system prompt
-        system_prompt = self._render_prompt(
-            system_context=self._get_system_context(),
-            available_tools=json.dumps(self._available_tools, indent=2),
-            recent_memory="No prior plans available.",
-            task=instruction,
-            output_format=self._get_output_format(),
-        )
-
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": instruction},
-        ]
-
-        # Attempt planning with retries
-        last_error: str | None = None
-        for attempt in range(self._max_retries + 1):
-            try:
-                raw = await self._call_llm(
-                    messages,
-                    temperature=0.3,
-                    response_format={"type": "json_object"},
-                )
-
-                plan = self._parse_json(raw)
-                self._validate_plan(plan)
-
-                logger.info(
-                    "planner_completed",
-                    task_id=task_id,
-                    subtask_count=len(plan.get("subtasks", [])),
-                    attempt=attempt + 1,
-                )
-
-                return self._make_reply(
-                    content=json.dumps(plan, indent=2),
-                    source_msg=x,
-                    meta_updates={"step_index": 1},
-                )
-
-            except (ValueError, PlanError) as exc:
-                last_error = str(exc)
-                logger.warning(
-                    "planner_retry",
-                    task_id=task_id,
-                    attempt=attempt + 1,
-                    error=last_error,
-                )
-                # Add error feedback for retry
-                messages.append({"role": "assistant", "content": raw if "raw" in dir() else ""})
-                messages.append({
-                    "role": "user",
-                    "content": (
-                        f"Your plan was invalid: {last_error}\n"
-                        "Please fix the JSON and try again."
-                    ),
-                })
-
-        raise PlanError(
-            f"Planner failed after {self._max_retries + 1} attempts: {last_error}",
-            task_id=task_id,
-            raw_output=last_error,
-        )
-
-    def _validate_plan(self, plan: dict[str, Any]) -> None:
-        """Validate a parsed plan structure.
-
-        Args:
-            plan: Parsed JSON plan dict.
-
-        Raises:
-            PlanError: If the plan structure is invalid.
-        """
-        if "subtasks" not in plan:
-            raise PlanError("Plan missing 'subtasks' array")
-
-        subtasks = plan["subtasks"]
-        if not isinstance(subtasks, list):
-            raise PlanError("'subtasks' must be an array")
-
-        if len(subtasks) == 0:
-            raise PlanError("Plan has zero subtasks")
-
-        if len(subtasks) > self._max_subtasks:
-            raise PlanError(
-                f"Plan has {len(subtasks)} subtasks, max is {self._max_subtasks}"
+    def _build_sys_prompt(self) -> str:
+        """Compose the system prompt with dynamic tool list."""
+        if self._tool_registry and hasattr(self._tool_registry, "describe_all"):
+            tool_list = self._tool_registry.describe_all()
+        else:
+            # Static fallback if registry is unavailable
+            tool_list = (
+                "- list_directory(path)\n- read_text_file(path)\n"
+                "- write_file(path, content)\n- execute_command(command)"
             )
 
-        ids = set()
-        for st in subtasks:
-            if "id" not in st or "action" not in st:
-                raise PlanError(f"Subtask missing required fields: {st}")
-            if st["id"] in ids:
-                raise PlanError(f"Duplicate subtask ID: {st['id']}")
-            ids.add(st["id"])
+        return f"""\
+You are ORION's Planner. Decompose the user instruction into a JSON array of subtasks.
 
-        # Check dependency references
-        for st in subtasks:
-            for dep in st.get("depends_on", []):
-                if dep not in ids:
-                    raise PlanError(
-                        f"Subtask '{st['id']}' depends on unknown ID '{dep}'"
+CRITICAL: Your ENTIRE response must be a single valid JSON array. No prose, no markdown, \
+no code fences. Start with [ and end with ].
+
+Each subtask:
+{{"id":"t1","description":"...","tool":"tool_name","params":{{"arg1":"val1"}},"depends_on":[]}}
+
+AVAILABLE TOOLS - Use these exact names:
+{tool_list}
+
+Rules:
+1. depends_on = list of task ids that must finish first. Use [] for parallel tasks.
+2. One tool call per subtask.
+3. Use correct tool names ONLY from the list above.
+4. Return ONLY the JSON array — no other text whatsoever.
+"""
+
+    async def reply(self, *args: Any, **kwargs: Any) -> Msg:
+        default = Msg(name="user", role="user", content="{}")
+        x: Msg = args[0] if args else kwargs.get("x", default)
+        
+        content = x.content if isinstance(x.content, dict) else {"instruction": str(x.content)}
+        instruction = content.get("instruction", "")
+        retry_feedback = content.get("retry_feedback", "")
+        retry_count = content.get("retry_count", 0)
+
+        prompt = f"Instruction: {instruction}"
+        if retry_feedback:
+            prompt += f"\n\nPrevious attempt #{retry_count} failed: {retry_feedback}\nAdjust the plan."
+        prompt += "\n\nRespond with ONLY the JSON array:"
+
+        for attempt in range(3):
+            try:
+                raw = await self._call_llm(
+                    [
+                        {"role": "system", "content": self.sys_prompt},
+                        {"role": "user", "content": prompt},
+                    ]
+                )
+                raw = raw.strip()
+                    
+                if not raw:
+                    logger.warning(
+                        "planner_empty_response",
+                        attempt=attempt,
+                        hint="API key may be rate-limited or quota exhausted",
+                    )
+                    await asyncio.sleep(1.5 * (attempt + 1))
+                    continue
+
+                parsed = _extract_json_array(raw)
+                if parsed is not None:
+                    return self._make_reply(
+                        content=json.dumps({"subtasks": parsed}),
+                        source_msg=x,
+                        meta_updates={"step_index": 1},
                     )
 
-    def _get_system_context(self) -> str:
-        """Build OS context string for the prompt."""
-        return (
-            f"OS: {platform.system()} {platform.release()}\n"
-            f"Hostname: {platform.node()}\n"
-            f"CWD: {Path.cwd()}\n"
-            f"User: ORION Agent"
-        )
+                logger.warning(
+                    "json_parse_failed",
+                    agent="planner",
+                    error="No JSON array found in output",
+                    text_preview=raw[:120],
+                )
+            except Exception as exc:
+                logger.warning("planner_model_error", attempt=attempt, error=str(exc))
+                await asyncio.sleep(1.5 * (attempt + 1))
 
-    def _get_output_format(self) -> str:
-        """Return the expected output JSON schema for the prompt."""
-        return """\
-{
-  "chain_of_thought": "string — your step-by-step reasoning",
-  "subtasks": [
-    {
-      "id": "s1",
-      "action": "human-readable description",
-      "tool": "exact_tool_name_from_registry",
-      "params": {},
-      "expected_output": "what success looks like",
-      "depends_on": [],
-      "is_destructive": false
-    }
-  ]
-}"""
+        fallback = [{
+            "id": "t1",
+            "description": instruction,
+            "tool": "execute_command",
+            "server": "bash",
+            "params": {"command": f"echo 'Task: {instruction}'"},
+            "depends_on": [],
+        }]
+        logger.warning("planner_used_fallback", instruction=instruction[:60])
+        return self._make_reply(
+            content=json.dumps({"subtasks": fallback}),
+            source_msg=x,
+            meta_updates={"step_index": 1},
+        )

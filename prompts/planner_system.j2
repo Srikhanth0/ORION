@@ -23,8 +23,9 @@ Before producing the plan, reason step-by-step:
 1. THOUGHT: What is the user asking? What are the constraints?
 2. THOUGHT: What tools are available? Which ones apply?
 3. THOUGHT: What is the dependency order? Which steps must run first?
-4. THOUGHT: Are any steps destructive? Flag them.
-5. ACTION: Produce the structured JSON plan.
+4. THOUGHT: Which steps are independent and can run in parallel?
+5. THOUGHT: Are any steps destructive? Flag them.
+6. ACTION: Produce the structured JSON plan.
 
 ═══ FEW-SHOT EXAMPLES ═══
 
@@ -36,6 +37,8 @@ User: "Create a directory called 'reports' and write a summary.txt inside it"
     {
       "id": "s1",
       "action": "Create the 'reports' directory",
+      "tool_category": "os_tools",
+      "tool_name": "SHELL_EXEC_CMD",
       "tool": "shell_exec",
       "params": {"command": "mkdir reports"},
       "expected_output": "Directory created successfully",
@@ -45,6 +48,8 @@ User: "Create a directory called 'reports' and write a summary.txt inside it"
     {
       "id": "s2",
       "action": "Write summary.txt inside reports/",
+      "tool_category": "os_tools",
+      "tool_name": "FILE_WRITE",
       "tool": "file_write",
       "params": {"path": "reports/summary.txt", "content": "Summary placeholder"},
       "expected_output": "File written successfully",
@@ -54,7 +59,37 @@ User: "Create a directory called 'reports' and write a summary.txt inside it"
   ]
 }
 
-Example 2 (INCORRECT — missing dependencies, no reasoning):
+Example 2 (CORRECT — parallel independent steps):
+User: "List all running processes and check disk usage"
+{
+  "chain_of_thought": "These two operations are completely independent — listing processes does not depend on disk usage or vice versa. They can run in parallel. Neither is destructive.",
+  "subtasks": [
+    {
+      "id": "s1",
+      "action": "List all running processes",
+      "tool_category": "os_tools",
+      "tool_name": "OS_LIST_PROCESSES",
+      "tool": "os_list_processes",
+      "params": {},
+      "expected_output": "Process list",
+      "depends_on": [],
+      "is_destructive": false
+    },
+    {
+      "id": "s2",
+      "action": "Check disk usage",
+      "tool_category": "os_tools",
+      "tool_name": "SHELL_EXEC_CMD",
+      "tool": "shell_exec",
+      "params": {"command": "df -h"},
+      "expected_output": "Disk usage report",
+      "depends_on": [],
+      "is_destructive": false
+    }
+  ]
+}
+
+Example 3 (INCORRECT — missing dependencies, no reasoning):
 User: "Install package and run tests"
 {
   "subtasks": [
@@ -63,7 +98,8 @@ User: "Install package and run tests"
   ]
 }
 Problems: Missing chain_of_thought, wrong dependency order (tests before install),
-missing params, missing expected_output, missing is_destructive flags.
+missing params, missing expected_output, missing is_destructive flags,
+missing tool_category and tool_name fields.
 
 ═══ GUARD RAILS — YOU MUST NOT ═══
 - Do NOT produce more than 20 subtasks in a single plan.
@@ -72,3 +108,5 @@ missing params, missing expected_output, missing is_destructive flags.
 - Do NOT create circular dependencies between subtasks.
 - Do NOT mark read-only operations (list, read, search) as destructive.
 - Do NOT include any text outside the JSON object.
+- Do NOT add depends_on for steps that are truly independent — they will run in PARALLEL.
+- Do NOT forget tool_category and tool_name — both are REQUIRED for every subtask.

@@ -32,7 +32,7 @@ logger = structlog.get_logger(__name__)
 # Env vars to strip from subprocess environment
 _SENSITIVE_ENV_PREFIXES = frozenset({
     "API_KEY", "SECRET", "TOKEN", "PASSWORD",
-    "COMPOSIO", "OPENAI", "GROQ", "OPENROUTER",
+    "GITHUB_PAT", "OPENAI", "GROQ", "OPENROUTER",
     "AWS_SECRET", "GITHUB_TOKEN",
 })
 

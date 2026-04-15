@@ -168,3 +168,39 @@ class TestPlannerAgent:
 
         parsed = json.loads(result.content)
         assert len(parsed["subtasks"]) == 1
+
+    @pytest.mark.asyncio
+    async def test_plan_with_tool_category(self) -> None:
+        """Planner passes plans with tool_category and tool_name fields."""
+        plan = json.dumps({
+            "chain_of_thought": "Need to list processes",
+            "subtasks": [
+                {
+                    "id": "s1",
+                    "action": "List processes",
+                    "tool_category": "os_tools",
+                    "tool_name": "OS_LIST_PROCESSES",
+                    "tool": "os_list_processes",
+                    "params": {},
+                    "expected_output": "Process list",
+                    "depends_on": [],
+                    "is_destructive": False,
+                },
+            ],
+        })
+
+        model = MockModel([plan])
+        agent = PlannerAgent(model=model)
+        result = await agent.reply(_make_msg())
+
+        parsed = json.loads(result.content)
+        assert parsed["subtasks"][0]["tool_category"] == "os_tools"
+        assert parsed["subtasks"][0]["tool_name"] == "OS_LIST_PROCESSES"
+
+    @pytest.mark.asyncio
+    async def test_output_format_includes_tool_category(self) -> None:
+        """Planner output format schema includes tool_category."""
+        agent = PlannerAgent()
+        fmt = agent._get_output_format()
+        assert "tool_category" in fmt
+        assert "tool_name" in fmt

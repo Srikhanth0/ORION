@@ -1,7 +1,7 @@
 """MCPClient — defensive tool invocation with full safety pipeline.
 
 Validates params → checks permissions → gates destructive ops →
-checkpoints → executes → parses result → emits metrics.
+checkpoints → executes via MCP registry → parses result → emits metrics.
 
 Module Contract
 ---------------
@@ -59,7 +59,7 @@ class MCPClient:
     2. Check PermissionManifest.
     3. If destructive: DestructiveOpGate.approve().
     4. RollbackEngine.checkpoint().
-    5. Execute with timeout.
+    5. Execute via ToolRegistry.call() (MCP stdio).
     6. Parse into ToolResult.
     7. Log with structlog.
 
@@ -147,7 +147,7 @@ class MCPClient:
                 tool_name, params,
             )
 
-        # Step 6: Execute
+        # Step 6: Execute via MCP
         try:
             raw = await self._execute(
                 tool_name, params,
@@ -221,10 +221,10 @@ class MCPClient:
         params: dict[str, Any],
         timeout: float,
     ) -> Any:
-        """Execute the actual tool call.
+        """Execute the tool call via MCP registry with retry.
 
-        In production, this delegates to the Composio SDK.
-        Currently provides a stub that returns a simulated result.
+        Retries up to 3 times with exponential backoff (1s, 2s, 4s).
+        After 3 failures: returns failure result and logs.
 
         Args:
             tool_name: Tool to invoke.
@@ -236,48 +236,53 @@ class MCPClient:
         """
         import asyncio
 
-        try:
-            result = await asyncio.wait_for(
-                self._composio_call(tool_name, params),
-                timeout=timeout,
-            )
-            return result
-        except TimeoutError as exc:
-            raise ToolError(
-                f"Tool '{tool_name}' timed out "
-                f"after {timeout}s",
-                tool_name=tool_name,
-            ) from exc
+        max_retries = 3
+        base_delay = 1.0
 
-    async def _composio_call(
-        self,
-        tool_name: str,
-        params: dict[str, Any],
-    ) -> Any:
-        """Delegate to Composio SDK for actual execution.
-
-        Args:
-            tool_name: Tool action name.
-            params: Tool parameters.
-
-        Returns:
-            Raw Composio response.
-        """
-        try:
-            from composio import ComposioToolSet
-
-            toolset = ComposioToolSet(
-                api_key=self._registry._api_key
-            )
-            result = toolset.execute_action(
-                action=tool_name,
-                params=params,
-            )
-            return result
-        except ImportError:
-            # Stub mode — return simulated result
-            return {
-                "status": "simulated",
-                "tool": tool_name,
-                "params": params,
-            }
+        for attempt in range(1, max_retries + 1):
+            try:
+                result = await asyncio.wait_for(
+                    self._registry.call(tool_name, params),
+                    timeout=timeout,
+                )
+                return result
+            except TimeoutError as exc:
+                if attempt == max_retries:
+                    raise ToolError(
+                        f"Tool '{tool_name}' timed out "
+                        f"after {timeout}s ({max_retries} attempts)",
+                        tool_name=tool_name,
+                    ) from exc
+                delay = base_delay * (2 ** (attempt - 1))
+                logger.warning(
+                    "mcp_retry",
+                    tool=tool_name,
+                    attempt=attempt,
+                    delay=delay,
+                    error="timeout",
+                )
+                await asyncio.sleep(delay)
+            except ToolError:
+                raise
+            except Exception as exc:
+                if attempt == max_retries:
+                    logger.error(
+                        "mcp_server_unavailable",
+                        tool=tool_name,
+                        attempts=max_retries,
+                        error=str(exc),
+                    )
+                    raise ToolError(
+                        f"MCP server unavailable for '{tool_name}' "
+                        f"after {max_retries} attempts: {exc}",
+                        tool_name=tool_name,
+                    ) from exc
+                delay = base_delay * (2 ** (attempt - 1))
+                logger.warning(
+                    "mcp_retry",
+                    tool=tool_name,
+                    attempt=attempt,
+                    delay=delay,
+                    error=str(exc)[:100],
+                )
+                await asyncio.sleep(delay)

@@ -33,6 +33,15 @@ class EventType(StrEnum):
     AGENT_THOUGHT = "AGENT_THOUGHT"
     TASK_DONE = "TASK_DONE"
 
+    # Fine-grained pipeline events (Phase 5)
+    PLANNER_START = "planner_start"
+    SUBTASK_QUEUED = "subtask_queued"
+    SUBTASK_START = "subtask_start"
+    SUBTASK_RESULT = "subtask_result"
+    VERIFIER_RESULT = "verifier_result"
+    SUPERVISOR_DECISION = "supervisor_decision"
+    DONE = "done"
+
 
 # ── Requests ──────────────────────────────────────────────
 
@@ -57,6 +66,7 @@ class TaskRequest(BaseModel):
         default=300, ge=10, le=3600
     )
     hitl_webhook_url: str | None = None
+    safe_mode: bool = False
 
 
 # ── Responses ─────────────────────────────────────────────

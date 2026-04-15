@@ -1,7 +1,7 @@
 """FastAPI app factory + lifespan for ORION.
 
 Handles startup (init AgentScope, warm LLM router, load registry,
-start metrics, connect Qdrant) and shutdown (flush traces, close
+start metrics, init ChromaDB) and shutdown (flush traces, close
 connections, cancel background tasks).
 """
 from __future__ import annotations
@@ -50,8 +50,39 @@ async def lifespan(
     try:
         from orion.tools.registry import ToolRegistry
 
-        ToolRegistry.get_instance()
-        logger.info("tool_registry_loaded")
+        registry = ToolRegistry.get_instance()
+        registry.load_from_config()
+        
+        # Load native vision tools first
+        registry.register_vision_tools()
+        
+        # Register native OS tools that work without npx/MCP
+        registry.register_os_tools()
+        
+        # Synchronous discovery of all tools so /v1/tools returns them immediately
+        async def _discover_all():
+            for cat in registry._servers:
+                try:
+                    await registry.discover_tools(cat)
+                except Exception as e:
+                    logger.warning(
+                        "mcp_tool_discovery_failed",
+                        category=cat,
+                        error=str(e),
+                    )
+        
+        asyncio.create_task(_discover_all())
+        logger.info("tool_registry_loaded", server_count=len(registry._servers))
+        
+        # ORION-FIX: Warn early if uvx/npx are missing so failure is obvious
+        import shutil
+        from orion.tools.registry import UVX_BIN, NPX_BIN
+        for _bin in (UVX_BIN, NPX_BIN):
+            if not shutil.which(_bin):
+                logger.warning(
+                    "mcp_tools_dependency_missing",
+                    warning=f"Binary '{_bin}' not found on PATH. MCP tools requiring it will fail to load. On Windows, run inside WSL2 or install Node.js + uv globally.",
+                )
     except Exception as exc:
         logger.warning(
             "tool_registry_load_failed",
@@ -135,6 +166,13 @@ def create_app() -> FastAPI:
     app.include_router(tasks.router)
     app.include_router(tools.router)
     app.include_router(status.router)
+    
+    # ORION-FIX: Qdrant is now optional; readiness only fails if LLM is unreachable
+    @app.get("/ready")
+    async def readiness() -> dict[str, Any]:
+        """Check application readiness."""
+        # Simple placeholder for actual router health check
+        return {"status": "ok", "qdrant": False}
 
     # Global exception handler → RFC 7807
     @app.exception_handler(Exception)

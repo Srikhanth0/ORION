@@ -81,3 +81,17 @@ destructive_risk_levels:
     - remove_temp
     - clean_cache
     - unlink
+
+# ── Vision / Computer Control ────────────────────────────
+# Vision tools bypass MCP stdio — they are native Python callables.
+# Computer control actions (click, type, keypress) require
+# human approval in strict safety mode.
+vision:
+  allowed:
+    - take_screenshot
+    - analyze_screen
+  require_approval:
+    - click_element
+    - type_text
+    - press_key
+  reason: "Computer control actions require human approval in strict mode"

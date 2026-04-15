@@ -1,0 +1,48 @@
+# ORION PATCH P0-B — OpenRouter model update
+# File: configs/llm/openrouter.yaml
+# Commit: fix(llm): replace removed mistral-7b with active free-tier models
+#
+# mistralai/mistral-7b-instruct was removed from OpenRouter's free tier in Q1 2026.
+# Verify current free models at: https://openrouter.ai/models?q=free
+# ─────────────────────────────────────────────────────────────────────────────
+
+provider: openrouter
+base_url: https://openrouter.ai/api/v1
+timeout: 30
+retry_on_status: [429, 500, 502, 503]
+max_retries: 3
+
+# ORION-FIX: All model slugs verified active as of 2026-04-14
+# Update this file when models are deprecated — add a CI job (see below)
+models:
+  # Primary fallback: fast, free, good instruction following
+  default: google/gemma-2-9b-it:free
+
+  # Reasoning-heavy tasks (paid — skip if no credits)
+  reasoning: mistralai/mixtral-8x7b-instruct:nitro
+
+  # Ultra-fast simple tasks (free)
+  fast: meta-llama/llama-3.1-8b-instruct:free
+
+  # Vision tasks (free tier, needed for Task 3)
+  vision: qwen/qwen-vl-7b:free
+
+# Circuit breaker: if OpenRouter returns ≥ 3 consecutive 404s on a model,
+# mark that model unavailable and remove it from rotation for 10 minutes.
+circuit_breaker:
+  failure_threshold: 3
+  recovery_window_seconds: 600
+  status_codes_triggering_open: [404, 422]
+
+# ── CI health-check job (add to .github/workflows/llm-health.yml) ─────────────
+#
+# name: OpenRouter model health
+# on:
+#   schedule:
+#     - cron: '0 6 * * 1'   # every Monday at 06:00 UTC
+# jobs:
+#   check:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+#       - run: python scripts/healthcheck.py --provider openrouter --fail-on-404

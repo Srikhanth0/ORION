@@ -1,5 +1,5 @@
 # ═══════════════════════════════════════════════════════════════
-# ORION — Horizontal Pod Autoscaler
+# ORION v1.0.0 — Horizontal Pod Autoscaler
 # ═══════════════════════════════════════════════════════════════
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -28,6 +28,14 @@ spec:
         target:
           type: Utilization
           averageUtilization: 80
+    # Custom metric: scale on task duration via Prometheus adapter
+    - type: Pods
+      pods:
+        metric:
+          name: orion_task_duration_seconds
+        target:
+          type: AverageValue
+          averageValue: "120"
   behavior:
     scaleUp:
       stabilizationWindowSeconds: 60

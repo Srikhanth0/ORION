@@ -1,5 +1,5 @@
 # ═══════════════════════════════════════════════════════════════
-# ORION — Multi-stage Dockerfile
+# ORION v1.0.0 — Multi-stage Containerfile (Podman / Docker)
 # ═══════════════════════════════════════════════════════════════
 # Stage 1: Builder — install all deps including dev tools
 # Stage 2: Runtime — copy only site-packages + app code
@@ -35,11 +35,15 @@ FROM python:3.13-slim AS runtime
 
 WORKDIR /app
 
-# Install minimal runtime deps
+# Install minimal runtime deps (including vision/computer control tools)
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends curl && \
-    rm -rf /var/lib/apt/lists/* && \
-    groupadd -r orion && useradd -r -g orion orion
+    apt-get install -y --no-install-recommends \
+        curl \
+        scrot \
+        xdotool \
+        nodejs npm \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd -r orion && useradd -r -g orion orion
 
 # Copy virtual environment from builder
 COPY --from=builder /build/.venv /app/.venv
@@ -55,10 +59,11 @@ ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONPATH="/app"
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV ORION_ENV=production
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:8080/health || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:8080/ready || exit 1
 
 # Run as non-root
 USER orion

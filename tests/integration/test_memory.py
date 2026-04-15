@@ -1,16 +1,16 @@
-"""Integration tests for Memory subsystem (Working + Embedder).
+"""Integration tests for Memory subsystem (Working + Embedder + ChromaDB).
 
-LongTermMemory integration requiring live Qdrant is skipped
-unless explicitly requested via env var.
+Uses an in-memory ChromaDB client for speed — no disk I/O needed.
 """
 from __future__ import annotations
 
+import json
 from unittest.mock import MagicMock
 
 import pytest
 
 from orion.memory.embedder import Embedder
-from orion.memory.longterm import LongTermMemory
+from orion.memory.longterm import LocalLongTermMemory
 from orion.memory.working import WorkingMemory
 
 try:
@@ -72,19 +72,89 @@ class TestMemoryIntegration:
         assert len(batch[1]) == 384
         assert embedder.cache_size == 2
 
-    def test_longterm_graceful_degradation(self) -> None:
-        """LongTermMemory falls back gracefully if Qdrant isn't running."""
-        # Provide real Embedder but point Qdrant to an invalid port
-        # so connection fails immediately.
-        ltm = LongTermMemory(url="http://localhost:11111")
-        # Overwrite _ensure_collections so it doesn't hard-crash
-        ltm._ensure_collections = MagicMock()
+    def test_longterm_chromadb_in_memory(self) -> None:
+        """LocalLongTermMemory works with in-memory ChromaDB client."""
+        import chromadb
 
-        # Store should catch exception and return a random doc_id
-        doc_id = ltm.store("desc", {}, "sum", True)
+        # Use in-memory client instead of PersistentClient for speed
+        in_memory_client = chromadb.Client()
+
+        ltm = LocalLongTermMemory()
+        ltm._client = in_memory_client
+        ltm._ensure_collections()
+
+        # Store a successful task
+        doc_id = ltm.store(
+            task_description="List all Python files",
+            execution_plan={"steps": ["find *.py"]},
+            step_results_summary="Found 42 files",
+            success=True,
+            duration_seconds=1.5,
+            tools_used=["os_tools"],
+        )
         assert len(doc_id) > 10  # uuid string
+        assert ltm.document_count == 1
 
-        # Retrieve should catch exception and return empty list
-        results = ltm.retrieve("query")
-        assert results == []
+        # Store a failed task (should go to failure collection)
+        ltm.store(
+            task_description="Delete system32",
+            execution_plan={},
+            step_results_summary="Permission denied",
+            success=False,
+        )
+        # Main collection still has 1
+        assert ltm.document_count == 1
+
+    def test_longterm_roundtrip(self) -> None:
+        """Store a task, retrieve it, verify fields match."""
+        import chromadb
+
+        in_memory_client = chromadb.Client()
+
+        ltm = LocalLongTermMemory()
+        ltm._client = in_memory_client
+        ltm._ensure_collections()
+
+        ltm.store(
+            task_description="Clone the ORION repository",
+            execution_plan={"steps": ["git clone"]},
+            step_results_summary="Cloned successfully",
+            success=True,
+            duration_seconds=3.2,
+            tools_used=["github_tools"],
+        )
+
+        # Retrieve with a similar query
+        results = ltm.retrieve(
+            "clone a git repo",
+            top_k=3,
+            score_threshold=0.0,  # accept any score for test
+        )
+
+        assert len(results) >= 1
+        task = results[0]
+        assert task.task_description == "Clone the ORION repository"
+        assert task.success is True
+        assert "github_tools" in task.tools_used
+
+    def test_longterm_clear(self) -> None:
+        """Clear empties all collections."""
+        import chromadb
+
+        in_memory_client = chromadb.Client()
+
+        # Use unique collection names to avoid leaking state
+        # from other test methods
+        ltm = LocalLongTermMemory(
+            collection="clear_test_tasks",
+        )
+        ltm._client = in_memory_client
+        ltm._collection_name = "clear_test_tasks"
+        ltm._failure_collection_name = "clear_test_failures"
+        ltm._ensure_collections()
+
+        ltm.store("task 1", {}, "done", True)
+        assert ltm.document_count == 1
+
+        ltm.clear()
         assert ltm.document_count == 0

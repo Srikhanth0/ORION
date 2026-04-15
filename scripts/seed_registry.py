@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
-"""ORION seed_registry — pre-populate the tool registry from Composio.
+"""ORION seed_registry — discover tools from MCP servers.
 
-Authenticates with Composio and loads all enabled app tools into
-the ORION tool registry for inspection and testing.
+Reads MCP server definitions from configs/mcp/servers.yaml,
+spawns each server process, and lists all discovered tools.
 
 Usage:
-    python scripts/seed_registry.py [--apps github shell]
-    python scripts/seed_registry.py --list
+    python scripts/seed_registry.py
+    python scripts/seed_registry.py --config configs/mcp/servers.yaml
+    python scripts/seed_registry.py --export tools.json
     python scripts/seed_registry.py --help
 """
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -25,31 +26,19 @@ def parse_args() -> argparse.Namespace:
         Parsed arguments namespace.
     """
     parser = argparse.ArgumentParser(
-        description="Pre-populate the ORION tool registry from Composio.",
+        description="Discover and list tools from MCP servers.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""\
 Examples:
-  python scripts/seed_registry.py                    # Load all enabled apps
-  python scripts/seed_registry.py --apps github shell # Load specific apps
-  python scripts/seed_registry.py --list              # List available apps
+  python scripts/seed_registry.py                    # Discover all tools
+  python scripts/seed_registry.py --export tools.json # Export tool schemas
         """,
-    )
-    parser.add_argument(
-        "--apps",
-        nargs="+",
-        default=None,
-        help="Specific Composio apps to load (default: all from config).",
-    )
-    parser.add_argument(
-        "--list",
-        action="store_true",
-        help="List all available Composio apps and exit.",
     )
     parser.add_argument(
         "--config",
         type=str,
-        default="configs/mcp/composio.yaml",
-        help="Path to Composio config YAML.",
+        default="configs/mcp/servers.yaml",
+        help="Path to MCP servers config YAML.",
     )
     parser.add_argument(
         "--export",
@@ -57,94 +46,82 @@ Examples:
         default=None,
         help="Export tool schemas to JSON file.",
     )
+    parser.add_argument(
+        "--list",
+        action="store_true",
+        help="List configured server categories and exit.",
+    )
     return parser.parse_args()
 
 
-def load_config(config_path: str) -> dict:
-    """Load Composio config from YAML.
+async def discover_all(config_path: str) -> None:
+    """Discover tools from all configured MCP servers.
 
     Args:
-        config_path: Path to YAML config.
-
-    Returns:
-        Parsed config dict.
+        config_path: Path to servers.yaml.
     """
-    import yaml
+    from orion.tools.registry import ToolRegistry
 
-    path = Path(config_path)
-    if not path.exists():
-        print(f"  ✗ Config not found: {config_path}")
-        return {}
+    registry = ToolRegistry(config_path=config_path)
+    registry.load_from_config()
 
-    with open(path) as f:
-        return yaml.safe_load(f) or {}
+    print(f"  Configured servers: {list(registry._servers.keys())}")
+    print()
+
+    total = 0
+    for category in registry._servers:
+        print(f"  Spawning {category}...")
+        tools = await registry.discover_tools(category)
+        total += len(tools)
+        print(f"    ✓ Discovered {len(tools)} tools")
+
+        for tool in tools:
+            destr = " [DESTRUCTIVE]" if tool.is_destructive else ""
+            print(
+                f"      • {tool.name} ({tool.category.value})"
+                f"{destr}"
+            )
+
+    print()
+    print(f"  Total: {total} tools across {len(registry._servers)} servers")
+    return registry
 
 
 def main() -> int:
-    """Seed the tool registry.
+    """Seed the tool registry from MCP servers.
 
     Returns:
         Exit code: 0 on success, 1 on failure.
     """
     args = parse_args()
 
-    print("═══ ORION Tool Registry Seeder ═══")
+    print("═══ ORION MCP Tool Discovery ═══")
     print()
-
-    # Load config
-    config = load_config(args.config)
-    composio_config = config.get("composio", {})
-
-    # Resolve API key
-    api_key_env = composio_config.get(
-        "api_key_env", "COMPOSIO_API_KEY"
-    )
-    api_key = os.environ.get(api_key_env)
-    if not api_key:
-        print(
-            f"  ⚠ No API key found in ${api_key_env}"
-        )
-        print("  Proceeding without authentication...")
-        print()
-
-    # Determine apps to load
-    enabled_apps = args.apps or composio_config.get("enabled_apps", [])
-
-    print(f"  Apps to load: {enabled_apps or 'all'}")
-    print()
-
-    # Initialize registry
-    from orion.tools.registry import ToolRegistry
-
-    registry = ToolRegistry(api_key=api_key)
 
     if args.list:
-        print("  Available Composio apps:")
-        for app in enabled_apps:
-            print(f"    • {app}")
+        import yaml
+        path = Path(args.config)
+        if not path.exists():
+            print(f"  ✗ Config not found: {args.config}")
+            return 1
+
+        with open(path) as f:
+            config = yaml.safe_load(f) or {}
+
+        servers = config.get("servers", {})
+        print("  Configured MCP servers:")
+        for cat, srv in servers.items():
+            print(f"    • {cat}: {srv.get('command', '?')} {' '.join(srv.get('args', []))}")
         return 0
 
-    # Load tools
-    print("  Loading tools from Composio...")
-    registry.load(enabled_apps=enabled_apps or None)
-
-    tool_count = registry.tool_count
-    print(f"  ✓ Loaded {tool_count} tools")
-    print()
-
-    # Display loaded tools
-    if tool_count > 0:
-        print("  Registered tools:")
-        for tool in registry.list_tools():
-            destr = " [DESTRUCTIVE]" if tool.is_destructive else ""
-            print(
-                f"    • {tool.name} ({tool.category.value})"
-                f"{destr}"
-            )
-        print()
+    try:
+        registry = asyncio.run(discover_all(args.config))
+    except Exception as exc:
+        print(f"  ✗ Discovery failed: {exc}")
+        return 1
 
     # Export if requested
-    if args.export:
+    if args.export and registry:
         export_data = []
         for tool in registry.list_tools():
             export_data.append({
@@ -153,6 +130,7 @@ def main() -> int:
                 "category": tool.category.value,
                 "is_destructive": tool.is_destructive,
                 "params_schema": tool.params_schema,
+                "server_category": tool.server_category,
             })
 
         with open(args.export, "w") as f:

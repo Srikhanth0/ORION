@@ -1,13 +1,16 @@
-"""Unit tests for ExecutorAgent."""
+"""Unit tests for ExecutorAgent and execute_dag."""
 from __future__ import annotations
 
+import asyncio
 import json
+import time
 from typing import Any
 
 import pytest
 from agentscope.message import Msg
 
-from orion.agents.executor import ExecutorAgent
+from orion.agents.executor import ExecutorAgent, topological_sort
+from orion.orchestrator.dispatcher import execute_dag
 
 
 def _make_plan_msg(
@@ -168,3 +171,192 @@ class TestExecutorAgent:
         meta = result.metadata.get("orion_meta", {})
         assert meta["task_id"] == "t_meta"
         assert meta["step_index"] == 2
+
+    @pytest.mark.asyncio
+    async def test_execute_subtask_public_api(self) -> None:
+        """execute_subtask is callable directly (for DAG dispatcher)."""
+        async def mock_tool(**params: Any) -> str:
+            return "direct call"
+
+        registry = {"direct_tool": mock_tool}
+        agent = ExecutorAgent(tool_registry=registry)
+
+        result = await agent.execute_subtask(
+            subtask={
+                "id": "s1",
+                "action": "Direct call",
+                "tool": "direct_tool",
+                "params": {},
+                "depends_on": [],
+            },
+            task_id="t_direct",
+        )
+        assert result["ok"] is True
+        assert result["output"] == "direct call"
+
+
+class TestTopologicalSort:
+    """Tests for module-level topological_sort function."""
+
+    def test_linear_chain(self) -> None:
+        """Linear chain: s1 → s2 → s3."""
+        subtasks = [
+            {"id": "s3", "depends_on": ["s2"]},
+            {"id": "s1", "depends_on": []},
+            {"id": "s2", "depends_on": ["s1"]},
+        ]
+        order = topological_sort(subtasks)
+        assert order == ["s1", "s2", "s3"]
+
+    def test_independent_tasks(self) -> None:
+        """Independent tasks can appear in any order."""
+        subtasks = [
+            {"id": "a", "depends_on": []},
+            {"id": "b", "depends_on": []},
+            {"id": "c", "depends_on": []},
+        ]
+        order = topological_sort(subtasks)
+        assert set(order) == {"a", "b", "c"}
+        assert len(order) == 3
+
+    def test_diamond_dependency(self) -> None:
+        """Diamond: s1 → s2, s1 → s3, s2+s3 → s4."""
+        subtasks = [
+            {"id": "s4", "depends_on": ["s2", "s3"]},
+            {"id": "s2", "depends_on": ["s1"]},
+            {"id": "s3", "depends_on": ["s1"]},
+            {"id": "s1", "depends_on": []},
+        ]
+        order = topological_sort(subtasks)
+        assert order[0] == "s1"
+        assert order[-1] == "s4"
+        assert set(order[1:3]) == {"s2", "s3"}
+
+
+class TestExecuteDAG:
+    """Tests for the DAG dispatcher."""
+
+    @pytest.mark.asyncio
+    async def test_parallel_independent_tasks(self) -> None:
+        """Independent tasks execute concurrently."""
+        timestamps: dict[str, float] = {}
+
+        async def slow_tool(**params: Any) -> str:
+            task_id = params.get("id", "?")
+            timestamps[f"{task_id}_start"] = time.monotonic()
+            await asyncio.sleep(0.1)
+            timestamps[f"{task_id}_end"] = time.monotonic()
+            return f"done_{task_id}"
+
+        registry = {"slow": slow_tool}
+        executor = ExecutorAgent(tool_registry=registry)
+
+        subtasks = [
+            {"id": "s1", "action": "A", "tool": "slow",
+             "params": {"id": "s1"}, "depends_on": []},
+            {"id": "s2", "action": "B", "tool": "slow",
+             "params": {"id": "s2"}, "depends_on": []},
+        ]
+
+        start = time.monotonic()
+        results = await execute_dag(subtasks, executor, "t_par")
+        elapsed = time.monotonic() - start
+
+        # Both tasks should succeed
+        assert results["s1"]["ok"] is True
+        assert results["s2"]["ok"] is True
+
+        # Should take ~0.1s (parallel), not ~0.2s (sequential)
+        # Use generous threshold for CI
+        assert elapsed < 0.5
+
+    @pytest.mark.asyncio
+    async def test_dependency_ordering(self) -> None:
+        """Dependent tasks execute in correct order."""
+        call_order: list[str] = []
+
+        async def track_tool(**params: Any) -> str:
+            tid = params.get("id", "?")
+            call_order.append(tid)
+            return f"done_{tid}"
+
+        registry = {"track": track_tool}
+        executor = ExecutorAgent(tool_registry=registry)
+
+        subtasks = [
+            {"id": "s2", "action": "B", "tool": "track",
+             "params": {"id": "s2"}, "depends_on": ["s1"]},
+            {"id": "s1", "action": "A", "tool": "track",
+             "params": {"id": "s1"}, "depends_on": []},
+        ]
+
+        results = await execute_dag(subtasks, executor, "t_dep")
+        assert results["s1"]["ok"] is True
+        assert results["s2"]["ok"] is True
+        assert call_order.index("s1") < call_order.index("s2")
+
+    @pytest.mark.asyncio
+    async def test_exception_handling(self) -> None:
+        """Failed tasks produce error results, don't crash DAG."""
+        async def fail_tool(**params: Any) -> str:
+            raise RuntimeError("boom")
+
+        registry = {"fail": fail_tool}
+        executor = ExecutorAgent(tool_registry=registry, max_retries=0)
+
+        subtasks = [
+            {"id": "s1", "action": "Fail", "tool": "fail",
+             "params": {}, "depends_on": []},
+        ]
+
+        results = await execute_dag(subtasks, executor, "t_err")
+        assert results["s1"]["ok"] is False
+        assert "boom" in results["s1"]["error"]
+
+    @pytest.mark.asyncio
+    async def test_diamond_dag(self) -> None:
+        """Diamond DAG: s1 → (s2, s3) → s4."""
+        order: list[str] = []
+
+        async def record_tool(**params: Any) -> str:
+            tid = params.get("id", "?")
+            order.append(tid)
+            await asyncio.sleep(0.01)
+            return f"done_{tid}"
+
+        registry = {"rec": record_tool}
+        executor = ExecutorAgent(tool_registry=registry)
+
+        subtasks = [
+            {"id": "s1", "action": "Start", "tool": "rec",
+             "params": {"id": "s1"}, "depends_on": []},
+            {"id": "s2", "action": "Left", "tool": "rec",
+             "params": {"id": "s2"}, "depends_on": ["s1"]},
+            {"id": "s3", "action": "Right", "tool": "rec",
+             "params": {"id": "s3"}, "depends_on": ["s1"]},
+            {"id": "s4", "action": "Join", "tool": "rec",
+             "params": {"id": "s4"}, "depends_on": ["s2", "s3"]},
+        ]
+
+        results = await execute_dag(subtasks, executor, "t_diamond")
+
+        assert all(r["ok"] for r in results.values())
+        assert order[0] == "s1"
+        assert order[-1] == "s4"
+        # s2 and s3 in middle (parallel, any order)
+        assert set(order[1:3]) == {"s2", "s3"}
+
+    @pytest.mark.asyncio
+    async def test_unsatisfiable_dag_raises(self) -> None:
+        """Cyclic/unsatisfiable DAG raises RuntimeError."""
+        executor = ExecutorAgent()
+
+        subtasks = [
+            {"id": "s1", "action": "A", "tool": "x",
+             "params": {}, "depends_on": ["s2"]},
+            {"id": "s2", "action": "B", "tool": "x",
+             "params": {}, "depends_on": ["s1"]},
+        ]
+
+        with pytest.raises(RuntimeError, match="unsatisfiable"):
+            await execute_dag(subtasks, executor, "t_cycle")

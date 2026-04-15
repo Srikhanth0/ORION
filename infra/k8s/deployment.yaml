@@ -1,5 +1,5 @@
 # ═══════════════════════════════════════════════════════════════
-# ORION — Kubernetes Deployment
+# ORION v1.0.0 — Kubernetes Deployment
 # ═══════════════════════════════════════════════════════════════
 apiVersion: apps/v1
 kind: Deployment
@@ -8,6 +8,7 @@ metadata:
   labels:
     app: orion
     component: api
+    version: "1.0.0"
 spec:
   replicas: 2
   strategy:
@@ -24,11 +25,12 @@ spec:
       labels:
         app: orion
         component: api
+        version: "1.0.0"
     spec:
       terminationGracePeriodSeconds: 60
       containers:
         - name: orion-api
-          image: orion-api:latest
+          image: ghcr.io/srikhanth0/orion:1.0.0
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
@@ -40,13 +42,20 @@ spec:
                 name: orion-config
             - secretRef:
                 name: orion-secrets
+          env:
+            - name: VISION_API_URL
+              valueFrom:
+                secretKeyRef:
+                  name: orion-secrets
+                  key: VISION_API_URL
+                  optional: true
           resources:
             requests:
               cpu: 500m
-              memory: 512Mi
+              memory: 1Gi
             limits:
               cpu: "2"
-              memory: 2Gi
+              memory: 4Gi
           livenessProbe:
             httpGet:
               path: /health
@@ -85,3 +94,4 @@ data:
   METRICS_PORT: "9091"
   MAX_CONCURRENT_TASKS: "5"
   QDRANT_URL: "http://qdrant:6333"
+  PYAUTOGUI_FAILSAFE: "true"

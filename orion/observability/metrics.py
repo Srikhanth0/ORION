@@ -61,45 +61,51 @@ def _make_gauge(
 # ── LLM Metrics ──────────────────────────────────────────
 
 LLM_REQUESTS = _make_counter(
-    "openclaw_llm_requests_total",
+    "orion_llm_requests_total",
     "Total LLM requests by provider, model, status",
     ["provider", "model", "status"],
 )
 
 LLM_LATENCY = _make_histogram(
-    "openclaw_llm_latency_seconds",
+    "orion_llm_latency_seconds",
     "LLM request latency by provider",
     ["provider"],
 )
 
 LLM_TOKENS = _make_counter(
-    "openclaw_llm_tokens_total",
+    "orion_llm_tokens_total",
     "Total tokens by provider and type (input/output)",
     ["provider", "type"],
 )
 
 LLM_COST = _make_counter(
-    "openclaw_llm_cost_usd_total",
+    "orion_llm_cost_usd_total",
     "Total LLM cost in USD by provider",
     ["provider"],
 )
 
 PROVIDER_STATUS = _make_gauge(
-    "openclaw_provider_status",
+    "orion_provider_status",
     "Provider availability (0=down, 1=up)",
+    ["provider"],
+)
+
+LLM_PROVIDER_FAILURES = _make_counter(
+    "orion_llm_provider_failures_total",
+    "Total LLM provider failures by provider",
     ["provider"],
 )
 
 # ── Tool Metrics ─────────────────────────────────────────
 
 TOOL_CALLS = _make_counter(
-    "openclaw_tool_calls_total",
+    "orion_tool_calls_total",
     "Total tool invocations by tool, category, status",
     ["tool", "category", "status"],
 )
 
 TOOL_LATENCY = _make_histogram(
-    "openclaw_tool_latency_seconds",
+    "orion_tool_latency_seconds",
     "Tool invocation latency by tool",
     ["tool"],
 )
@@ -107,27 +113,41 @@ TOOL_LATENCY = _make_histogram(
 # ── Task Metrics ─────────────────────────────────────────
 
 TASKS_TOTAL = _make_counter(
-    "openclaw_tasks_total",
+    "orion_tasks_total",
     "Total tasks by status (pass/fail/escalate)",
     ["status"],
 )
 
 TASK_DURATION = _make_histogram(
-    "openclaw_task_duration_seconds",
+    "orion_task_duration_seconds",
     "Task duration in seconds",
+    [],
+)
+
+SUBTASKS_PARALLEL = _make_gauge(
+    "orion_subtasks_parallel_count",
+    "Number of subtasks executing in parallel in current batch",
+    [],
+)
+
+# ── Vision Metrics ───────────────────────────────────────
+
+VISION_API_LATENCY = _make_histogram(
+    "orion_vision_api_latency_seconds",
+    "Vision API request latency",
     [],
 )
 
 # ── Memory Metrics ───────────────────────────────────────
 
 WORKING_MEMORY_TOKENS = _make_gauge(
-    "openclaw_memory_working_tokens",
+    "orion_memory_working_tokens",
     "Working memory token utilization per agent",
     ["agent"],
 )
 
 LONGTERM_DOCUMENTS = _make_gauge(
-    "openclaw_memory_longterm_documents_total",
+    "orion_memory_longterm_documents_total",
     "Total documents in long-term memory",
     [],
 )
@@ -135,8 +155,8 @@ LONGTERM_DOCUMENTS = _make_gauge(
 # ── Circuit Breaker ──────────────────────────────────────
 
 CIRCUIT_BREAKER = _make_gauge(
-    "openclaw_circuit_breaker_state",
-    "Circuit breaker state (0=closed, 1=open)",
+    "orion_circuit_breaker_state",
+    "Circuit breaker state (0=closed, 1=open, 2=half_open)",
     ["provider"],
 )
 
@@ -219,6 +239,9 @@ def record_llm_call(
     if LLM_COST and cost_usd > 0:
         LLM_COST.labels(provider=provider).inc(cost_usd)
 
+    if status == "error" and LLM_PROVIDER_FAILURES:
+        LLM_PROVIDER_FAILURES.labels(provider=provider).inc()
+
 
 def record_tool_call(
     tool: str,
@@ -258,3 +281,15 @@ def record_task(
         TASKS_TOTAL.labels(status=status).inc()
     if TASK_DURATION:
         TASK_DURATION.observe(duration_seconds)
+
+
+def record_vision_call(
+    latency_seconds: float,
+) -> None:
+    """Record a vision API call.
+
+    Args:
+        latency_seconds: Round-trip latency to the vision server.
+    """
+    if VISION_API_LATENCY:
+        VISION_API_LATENCY.observe(latency_seconds)

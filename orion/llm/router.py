@@ -63,75 +63,111 @@ class StructuredOutputError(LLMError):
         self.schema_name = schema_name
 
 
-# ── Circuit Breaker ──────────────────────────────────────────
+class CircuitBreakerState:
+    """Circuit breaker states."""
+
+    CLOSED = "CLOSED"
+    OPEN = "OPEN"
+    HALF_OPEN = "HALF_OPEN"
 
 
 class CircuitBreaker:
-    """Per-provider circuit breaker.
+    """Per-provider circuit breaker with 3-state model.
 
-    Trips after ``failure_threshold`` failures within ``window_seconds``.
-    Once tripped, the provider is marked UNAVAILABLE for
-    ``recovery_timeout`` seconds regardless of health check results.
+    States:
+    - CLOSED: Normal operation. Failures are counted.
+    - OPEN: Provider is skipped. After ``recovery_timeout`` seconds,
+      transitions to HALF_OPEN.
+    - HALF_OPEN: Allows one trial request. Success → CLOSED.
+      Failure → OPEN (timer resets).
 
     Args:
-        failure_threshold: Number of failures before tripping.
-        window_seconds: Time window for counting failures.
-        recovery_timeout: Seconds to wait before allowing retry.
+        failure_threshold: Consecutive failures before opening.
+        recovery_timeout: Seconds to wait before half-open trial.
     """
 
     def __init__(
         self,
-        failure_threshold: int = 5,
+        failure_threshold: int = 3,
+        recovery_timeout: float = 60.0,
+        # Legacy params kept for backward compat
         window_seconds: float = 60.0,
-        recovery_timeout: float = 300.0,
     ) -> None:
         self._threshold = failure_threshold
-        self._window = window_seconds
         self._recovery_timeout = recovery_timeout
-        self._failures: list[float] = []
-        self._tripped_at: float | None = None
+        self._consecutive_failures: int = 0
+        self._state: str = CircuitBreakerState.CLOSED
+        self._opened_at: float | None = None
         self._lock = asyncio.Lock()
 
     @property
+    def state(self) -> str:
+        """Return the current state, auto-transitioning OPEN→HALF_OPEN."""
+        if self._state == CircuitBreakerState.OPEN and self._opened_at is not None:
+            if (time.monotonic() - self._opened_at) >= self._recovery_timeout:
+                return CircuitBreakerState.HALF_OPEN
+        return self._state
+
+    @property
     def is_open(self) -> bool:
-        """Return True if the circuit breaker is currently tripped."""
-        if self._tripped_at is None:
-            return False
-        return (time.monotonic() - self._tripped_at) < self._recovery_timeout
+        """Return True if the breaker is OPEN (not HALF_OPEN)."""
+        return self.state == CircuitBreakerState.OPEN
 
     async def record_failure(self) -> bool:
-        """Record a failure and check if the breaker should trip.
+        """Record a failure. Returns True if breaker tripped to OPEN.
 
         Returns:
-            True if the circuit breaker is now tripped.
+            True if the circuit breaker transitioned to OPEN.
         """
         async with self._lock:
-            now = time.monotonic()
-            self._failures = [
-                t for t in self._failures if (now - t) < self._window
-            ]
-            self._failures.append(now)
+            self._consecutive_failures += 1
+            prev_state = self._state
 
-            if len(self._failures) >= self._threshold:
-                self._tripped_at = now
+            if self._state == CircuitBreakerState.HALF_OPEN:
+                # Trial request failed → back to OPEN
+                self._state = CircuitBreakerState.OPEN
+                self._opened_at = time.monotonic()
                 logger.warning(
-                    "circuit_breaker_tripped",
-                    failures_in_window=len(self._failures),
+                    "circuit_breaker_half_open_failed",
+                    new_state="OPEN",
                     recovery_timeout=self._recovery_timeout,
                 )
                 return True
+
+            if self._consecutive_failures >= self._threshold:
+                self._state = CircuitBreakerState.OPEN
+                self._opened_at = time.monotonic()
+                logger.warning(
+                    "circuit_breaker_tripped",
+                    consecutive_failures=self._consecutive_failures,
+                    threshold=self._threshold,
+                    recovery_timeout=self._recovery_timeout,
+                    prev_state=prev_state,
+                )
+                return True
+
             return False
 
     async def record_success(self) -> None:
-        """Record a successful call and reset the failure window."""
+        """Record a successful call. Resets failures and closes breaker."""
         async with self._lock:
-            self._failures.clear()
+            prev_state = self._state
+            self._consecutive_failures = 0
+            self._state = CircuitBreakerState.CLOSED
+            self._opened_at = None
+
+            if prev_state != CircuitBreakerState.CLOSED:
+                logger.info(
+                    "circuit_breaker_closed",
+                    prev_state=prev_state,
+                )
 
     async def reset(self) -> None:
-        """Manually reset the circuit breaker."""
+        """Manually reset the circuit breaker to CLOSED."""
         async with self._lock:
-            self._failures.clear()
-            self._tripped_at = None
+            self._consecutive_failures = 0
+            self._state = CircuitBreakerState.CLOSED
+            self._opened_at = None
 
 
 # ── Adaptive LLM Router ─────────────────────────────────────
@@ -165,9 +201,8 @@ class AdaptiveLLMRouter:
         cb_config = circuit_breaker_config or {}
         self._circuit_breakers: dict[str, CircuitBreaker] = {
             p.name: CircuitBreaker(
-                failure_threshold=cb_config.get("failure_threshold", 5),
-                window_seconds=cb_config.get("window_seconds", 60.0),
-                recovery_timeout=cb_config.get("recovery_timeout", 300.0),
+                failure_threshold=cb_config.get("failure_threshold", 3),
+                recovery_timeout=cb_config.get("recovery_timeout", 60.0),
             )
             for p in providers
         }

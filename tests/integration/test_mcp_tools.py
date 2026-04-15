@@ -1,13 +1,14 @@
-"""Integration tests for Composio MCP tool layer.
+"""Integration tests for MCP tool layer.
 
-Uses fixtures, no live API calls. Tests the full invocation pipeline:
-registry → MCPClient → safety checks → result parsing.
+Uses fixtures and mocks, no live MCP server processes. Tests the full
+invocation pipeline: registry → MCPClient → safety checks → result parsing.
 """
 from __future__ import annotations
 
 import json
 from pathlib import Path
 from typing import Any
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -21,17 +22,11 @@ from orion.safety.manifest import PermissionManifest
 from orion.safety.rollback import RollbackEngine
 from orion.tools.mcp_client import MCPClient
 from orion.tools.registry import (
-    ComposioToolWrapper,
+    MCPToolWrapper,
     ToolCategory,
     ToolRegistry,
 )
 from orion.tools.selector import ToolSelector
-
-_FIXTURES = (
-    Path(__file__).resolve().parent.parent
-    / "fixtures"
-    / "mock_tool_responses.json"
-)
 
 
 @pytest.fixture(autouse=True)
@@ -41,38 +36,40 @@ def _reset_registry() -> None:
 
 
 @pytest.fixture()
-def mock_responses() -> dict[str, Any]:
-    """Load mock tool responses fixture."""
-    with open(_FIXTURES) as f:
-        return json.load(f)
-
-
-@pytest.fixture()
 def registry() -> ToolRegistry:
     """Create a registry with test tools."""
     reg = ToolRegistry()
-    reg.register(ComposioToolWrapper(
+    reg.register(MCPToolWrapper(
         name="GITHUB_CREATE_ISSUE",
         description="Create a GitHub issue",
         category=ToolCategory.GITHUB,
+        server_category="github_tools",
     ))
-    reg.register(ComposioToolWrapper(
+    reg.register(MCPToolWrapper(
         name="FILE_WRITE",
         description="Write content to a file",
         category=ToolCategory.OS,
         is_destructive=True,
+        server_category="os_tools",
     ))
-    reg.register(ComposioToolWrapper(
+    reg.register(MCPToolWrapper(
         name="SHELL_EXEC_CMD",
         description="Execute a shell command",
         category=ToolCategory.OS,
         is_destructive=True,
+        server_category="os_tools",
     ))
-    reg.register(ComposioToolWrapper(
+    reg.register(MCPToolWrapper(
         name="BROWSER_NAVIGATE_URL",
         description="Navigate to a URL",
         category=ToolCategory.BROWSER,
+        server_category="browser_tools",
     ))
+
+    # Map tools to mock servers
+    for tool in reg.list_tools():
+        reg._tool_to_server[tool.name] = tool.server_category
+
     return reg
 
 
@@ -99,27 +96,37 @@ filesystem:
     return PermissionManifest(config_path=config)
 
 
+def _make_mock_call_result(
+    text: str = "simulated result",
+) -> MagicMock:
+    """Create a mock MCP CallToolResult."""
+    content_block = MagicMock()
+    content_block.text = text
+    result = MagicMock()
+    result.content = [content_block]
+    return result
+
+
 class TestMCPIntegration:
     """Integration tests for the MCPClient pipeline."""
-
-    @staticmethod
-    async def _mock_composio_call(
-        tool_name: str, params: dict[str, Any]
-    ) -> dict[str, Any]:
-        """Mock Composio call returning simulated data."""
-        return {
-            "status": "simulated",
-            "tool": tool_name,
-            "params": params,
-        }
 
     @pytest.mark.asyncio
     async def test_invoke_registered_tool(
         self, registry: ToolRegistry
     ) -> None:
-        """Successfully invoke a registered tool (simulated)."""
+        """Successfully invoke a registered tool (mocked MCP)."""
+        mock_session = AsyncMock()
+        mock_session.call_tool.return_value = _make_mock_call_result()
+
+        # Wire mock session to the server entry
+        from orion.tools.registry import MCPServerEntry
+        registry._servers["github_tools"] = MCPServerEntry(
+            category="github_tools",
+            command="mock",
+        )
+        registry._servers["github_tools"]._session = mock_session
+
         client = MCPClient(registry=registry)
-        client._composio_call = self._mock_composio_call
         result = await client.invoke(
             "GITHUB_CREATE_ISSUE",
             {"repo": "test/repo", "title": "Test"},
@@ -127,6 +134,7 @@ class TestMCPIntegration:
         )
         assert result.ok is True
         assert result.duration_ms >= 0
+        assert "simulated result" in result.output
 
     @pytest.mark.asyncio
     async def test_invoke_unregistered_tool_raises(
@@ -147,7 +155,7 @@ class TestMCPIntegration:
         manifest: PermissionManifest,
     ) -> None:
         """Permission-denied tool raises PermissionDeniedError."""
-        registry.register(ComposioToolWrapper(
+        registry.register(MCPToolWrapper(
             name="GITHUB_DELETE_REPO",
             description="Delete a repo",
             category=ToolCategory.GITHUB,
@@ -189,6 +197,16 @@ class TestMCPIntegration:
         tmp_path: Path,
     ) -> None:
         """MCPClient creates checkpoints via RollbackEngine."""
+        mock_session = AsyncMock()
+        mock_session.call_tool.return_value = _make_mock_call_result()
+
+        from orion.tools.registry import MCPServerEntry
+        registry._servers["github_tools"] = MCPServerEntry(
+            category="github_tools",
+            command="mock",
+        )
+        registry._servers["github_tools"]._session = mock_session
+
         rollback = RollbackEngine(
             checkpoint_dir=tmp_path / "cp"
         )
@@ -196,7 +214,6 @@ class TestMCPIntegration:
             registry=registry,
             rollback_engine=rollback,
         )
-        client._composio_call = self._mock_composio_call
 
         await client.invoke(
             "GITHUB_CREATE_ISSUE",
@@ -212,7 +229,7 @@ class TestMCPIntegration:
         self, registry: ToolRegistry
     ) -> None:
         """Invalid params against schema raises ToolError."""
-        registry.register(ComposioToolWrapper(
+        registry.register(MCPToolWrapper(
             name="STRICT_TOOL",
             description="Tool with schema",
             category=ToolCategory.SYSTEM,
@@ -266,3 +283,68 @@ class TestToolSelectorIntegration:
         selector = ToolSelector(registry=empty_reg)
         suggestions = selector.suggest("anything")
         assert suggestions == []
+
+
+class TestMCPRegistryConfig:
+    """Tests for MCP server configuration loading."""
+
+    def test_load_from_config(self, tmp_path: Path) -> None:
+        """Registry loads server entries from YAML config."""
+        config = tmp_path / "servers.yaml"
+        config.write_text("""
+servers:
+  test_tools:
+    command: echo
+    args: ["hello"]
+    env: {}
+defaults:
+  timeout_seconds: 10
+""")
+        registry = ToolRegistry(config_path=config)
+        registry.load_from_config()
+
+        assert "test_tools" in registry._servers
+        assert registry._servers["test_tools"].command == "echo"
+        assert registry._servers["test_tools"].args == ["hello"]
+
+    def test_load_missing_config(self, tmp_path: Path) -> None:
+        """Missing config file doesn't crash."""
+        registry = ToolRegistry(config_path=tmp_path / "nonexistent.yaml")
+        registry.load_from_config()
+        assert len(registry._servers) == 0
+
+    def test_legacy_load_delegates(self, tmp_path: Path) -> None:
+        """Legacy load() method delegates to load_from_config()."""
+        config = tmp_path / "servers.yaml"
+        config.write_text("""
+servers:
+  legacy_test:
+    command: echo
+    args: []
+    env: {}
+""")
+        registry = ToolRegistry(config_path=config)
+        registry.load()  # Legacy method
+        assert "legacy_test" in registry._servers
+
+    def test_env_var_resolution(self, tmp_path: Path) -> None:
+        """Environment variable references are resolved."""
+        import os
+        os.environ["TEST_MCP_TOKEN"] = "secret123"
+
+        config = tmp_path / "servers.yaml"
+        config.write_text("""
+servers:
+  env_test:
+    command: echo
+    args: []
+    env:
+      TOKEN: "${TEST_MCP_TOKEN}"
+""")
+        registry = ToolRegistry(config_path=config)
+        registry.load_from_config()
+
+        assert registry._servers["env_test"].env["TOKEN"] == "secret123"
+
+        # Cleanup
+        del os.environ["TEST_MCP_TOKEN"]

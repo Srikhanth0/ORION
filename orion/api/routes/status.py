@@ -28,17 +28,17 @@ async def ready() -> dict[str, object]:
     """
     checks: dict[str, bool] = {}
 
-    # Check Qdrant
+    # Check ChromaDB
     try:
-        from qdrant_client import QdrantClient
+        import chromadb
 
-        client = QdrantClient(
-            url="http://localhost:6333", timeout=2.0
+        client = chromadb.PersistentClient(
+            path=".orion_memory"
         )
-        client.get_collections()
-        checks["qdrant"] = True
+        client.heartbeat()
+        checks["chromadb"] = True
     except Exception:
-        checks["qdrant"] = False
+        checks["chromadb"] = False
 
     # Check tool registry
     try:

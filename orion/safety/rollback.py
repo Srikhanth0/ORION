@@ -70,7 +70,7 @@ class RollbackEngine:
     def __init__(
         self,
         checkpoint_dir: str | Path | None = None,
-        max_checkpoints: int = 20,
+        max_checkpoints: int = 50,
     ) -> None:
         self._checkpoint_dir = Path(
             checkpoint_dir or "checkpoints"

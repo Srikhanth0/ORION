@@ -1,4 +1,4 @@
-"""Browser tool category — typed wrappers for Composio browser actions.
+"""Browser tool category — typed wrappers for MCP browser actions.
 
 Depends On
 ----------
@@ -10,7 +10,7 @@ from orion.tools.mcp_client import MCPClient, ToolResult
 
 
 class BrowserTools:
-    """Typed wrappers for browser Composio actions.
+    """Typed wrappers for browser MCP actions.
 
     Args:
         client: MCPClient instance for invocation.

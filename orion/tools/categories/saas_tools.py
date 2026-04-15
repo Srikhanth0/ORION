@@ -1,4 +1,4 @@
-"""SaaS tool category — typed wrappers for Composio SaaS actions.
+"""SaaS tool category — typed wrappers for MCP SaaS actions.
 
 Depends On
 ----------
@@ -10,7 +10,7 @@ from orion.tools.mcp_client import MCPClient, ToolResult
 
 
 class SaaSTools:
-    """Typed wrappers for SaaS Composio actions.
+    """Typed wrappers for SaaS MCP actions.
 
     Args:
         client: MCPClient instance for invocation.

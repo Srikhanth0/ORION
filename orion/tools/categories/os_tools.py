@@ -1,4 +1,4 @@
-"""OS tool category — typed wrappers for Composio OS/shell actions.
+"""OS tool category — typed wrappers for MCP OS/shell actions.
 
 Depends On
 ----------
@@ -10,7 +10,7 @@ from orion.tools.mcp_client import MCPClient, ToolResult
 
 
 class OSTools:
-    """Typed wrappers for OS/shell Composio actions.
+    """Typed wrappers for OS/shell MCP actions.
 
     Args:
         client: MCPClient instance for invocation.

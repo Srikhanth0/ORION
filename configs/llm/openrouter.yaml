@@ -6,8 +6,9 @@ provider_name: openrouter
 
 # Models available on OpenRouter
 models:
-  reasoning: openai/gpt-oss-120b:free
-  vision: google/gemma-4-26b-a4b-it:free
+  default: google/gemma-2-9b-it:free      # primary free fallback
+  reasoning: mistralai/mixtral-8x7b-instruct:nitro  # paid, optional
+  fast: meta-llama/llama-3.1-8b-instruct:free
 
 # Rate limit thresholds (free tier)
 rate_limits:

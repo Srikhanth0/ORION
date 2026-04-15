@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "orion-agent"
-version = "0.1.0"
-description = "ORION — Hierarchical OS automation agent combining AgentScope, HiClaw, Composio MCP, and tiered LLM backend."
+version = "1.0.0"
+description = "ORION — Hierarchical OS automation agent combining AgentScope, HiClaw, MCP tools, and tiered LLM backend."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
@@ -30,8 +30,12 @@ dependencies = [
     "groq~=0.13",
     "httpx~=0.27",
 
-    # ── Tool Integration (Composio MCP) ──
-    "composio-core>=0.6.0",
+    # ── Tool Integration (MCP) ──
+    "mcp>=1.0",
+
+    # ── Vision & Computer Control ──
+    "pyautogui>=0.9",
+    "Pillow>=10.0",
 
     # ── API Server ──
     "fastapi~=0.115",
@@ -44,8 +48,12 @@ dependencies = [
     "jinja2~=3.1",
 
     # ── Memory ──
-    "qdrant-client~=1.12",
+    "chromadb>=0.5,<1.0",
     "sentence-transformers~=3.3",
+
+    # ── CLI ──
+    "rich>=13",
+    "prompt-toolkit>=3.0",
 
     # ── Observability ──
     "langsmith~=0.2",
@@ -65,7 +73,7 @@ dev = [
 ]
 
 [project.scripts]
-orion = "orion.api.server:main"
+orion = "orion_cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["orion"]
@@ -93,10 +101,12 @@ disallow_any_generics = true
 [[tool.mypy.overrides]]
 module = [
     "agentscope.*",
-    "composio.*",
+    "mcp.*",
     "sentence_transformers.*",
-    "qdrant_client.*",
+    "chromadb.*",
     "langsmith.*",
+    "pyautogui.*",
+    "PIL.*",
 ]
 ignore_missing_imports = true
 
@@ -108,3 +118,7 @@ markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks integration tests requiring live services",
 ]
+
+[tool.orion]
+# ORION-FIX: Ensure UTF-8 globally
+python_utf8 = true

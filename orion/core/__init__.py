@@ -2,7 +2,7 @@
 
 This subpackage defines the foundational data types used throughout
 ORION. These types have ZERO dependencies on external frameworks
-(AgentScope, Composio, FastAPI, etc.) — they are pure Pydantic models
+(AgentScope, FastAPI, etc.) — they are pure Pydantic models
 and typed exceptions.
 
 Exports
@@ -21,7 +21,7 @@ Must NOT Know About
 - LLM providers or router implementation
 - Agent classes or orchestrator logic
 - Tool registry or MCP client
-- Memory backends (Qdrant, embeddings)
+- Memory backends (ChromaDB, embeddings)
 """
 from __future__ import annotations
 

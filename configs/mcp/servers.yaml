@@ -1,0 +1,31 @@
+# ═══════════════════════════════════════════════════════════════
+# ORION — MCP Server Configuration
+# ═══════════════════════════════════════════════════════════════
+# Each entry spawns a local stdio MCP server process.
+# Tools are discovered automatically via session.list_tools().
+#
+# Usage:
+#   ToolRegistry reads this file on startup and lazy-spawns
+#   server processes on first tool access per category.
+
+servers:
+  os_tools:
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "/"]
+    env: {}
+
+  browser_tools:
+    command: npx
+    args: ["-y", "@playwright/mcp@latest"]
+    env: {}
+
+  github_tools:
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-github"]
+    env:
+      GITHUB_PERSONAL_ACCESS_TOKEN: "${GITHUB_PAT}"
+
+# Default settings for all MCP server connections
+defaults:
+  timeout_seconds: 30
+  max_retries: 2

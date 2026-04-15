@@ -1,8 +1,12 @@
 # ═══════════════════════════════════════════════════════════════
 # ORION — Development Makefile
 # ═══════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════
+# ORION-FIX: Force UTF-8 for all Python subprocesses on Windows
+export PYTHONUTF8 := 1
+
 .PHONY: install dev test test-unit test-int lint lint-fix typecheck \
-        docker-up docker-up-dev docker-down docker-build \
+        podman-up podman-up-dev podman-down podman-build \
         eval health seed clean help
 
 help: ## Show this help message
@@ -48,33 +52,33 @@ typecheck: ## Run mypy strict type checking
 	@echo "──▶ Type-checking with mypy --strict..."
 	uv run mypy orion/ --strict
 
-# ── Docker ───────────────────────────────────────────────
-docker-build: ## Build the Docker image
-	@echo "──▶ Building Docker image..."
-	docker build -t orion-api:latest .
+# ── Podman ───────────────────────────────────────────────
+podman-build: ## Build the Podman image
+	@echo "──▶ Building Podman image..."
+	podman build -t orion:latest .
 
-docker-up: ## Start full stack via Docker Compose
-	@echo "──▶ Starting Docker Compose stack..."
-	docker compose up -d
+podman-up: ## Start full stack via Podman Compose
+	@echo "──▶ Starting Podman Compose stack..."
+	podman-compose -f podman-compose.yml up -d
 
-docker-up-dev: ## Start stack in dev mode (hot reload)
-	@echo "──▶ Starting Docker Compose dev stack..."
-	docker compose --profile dev up -d
+podman-up-dev: ## Start stack in dev mode (hot reload)
+	@echo "──▶ Starting Podman Compose dev stack..."
+	podman-compose -f podman-compose.yml --profile dev up -d
 
-docker-down: ## Stop Docker Compose stack
-	@echo "──▶ Stopping Docker Compose stack..."
-	docker compose down
+podman-down: ## Stop Podman Compose stack
+	@echo "──▶ Stopping Podman Compose stack..."
+	podman-compose -f podman-compose.yml down
 
 # ── Operations ───────────────────────────────────────────
 eval: ## Run evaluation suite against sample tasks
 	@echo "──▶ Running eval suite..."
-	uv run python scripts/eval_task.py --all --verbose
+	PYTHONUTF8=1 uv run python scripts/eval_task.py $(ARGS)
 
 health: ## Run system health check
 	@echo "──▶ Running health check..."
 	uv run python scripts/healthcheck.py
 
-seed: ## Seed the tool registry from Composio
+seed: ## Seed the tool registry
 	@echo "──▶ Seeding tool registry..."
 	uv run python scripts/seed_registry.py
 
@@ -87,3 +91,4 @@ clean: ## Remove build artifacts and caches
 	find . -type f -name "*.pyc" -delete 2>/dev/null || true
 	rm -f eval_report_*.json
 	@echo "  ✓ Clean complete"
+

@@ -78,16 +78,19 @@ class TaskContextFilter:
         cls,
         task_id: str = "",
         agent: str = "",
+        subtask_id: str = "",
     ) -> None:
         """Set the current task context.
 
         Args:
             task_id: Current task ID.
             agent: Current agent name.
+            subtask_id: Current subtask ID.
         """
         cls._context = {
             "task_id": task_id,
             "agent": agent,
+            "subtask_id": subtask_id,
         }
 
     @classmethod

@@ -52,9 +52,21 @@ class BaseOrionAgent(AgentBase):
     ) -> None:
         super().__init__()
         self.agent_name = agent_name
-        self._model = model
         self._prompt_template = prompt_template
         self._template_cache: dict[str, Any] = {}
+
+        # ORION-FIX: Auto-provision model via build_model() when None
+        self._model = model
+        if self._model is None:
+            try:
+                from orion.agentscope_config import build_model
+                self._model = build_model()
+            except Exception as exc:
+                logger.warning(
+                    "model_auto_provision_failed",
+                    agent=agent_name,
+                    error=str(exc),
+                )
 
     def _get_orion_meta(self, msg: Msg) -> dict[str, Any]:
         """Extract orion_meta from a message, with defaults.
@@ -137,15 +149,41 @@ class BaseOrionAgent(AgentBase):
         Returns:
             LLM response content string.
         """
-        if self._model is None:
-            msg = "No model configured for agent"
-            raise RuntimeError(msg)
-
+        # AgentScope OpenAIChatModel has a bug in v1.0.18 where stream=False throws an async context manager error.
+        # So we omit stream=False and consume the returned async_generator.
+        if "stream" in kwargs:
+            del kwargs["stream"]
+            
         response = await self._model(messages=messages, **kwargs)
-        # Extract text from ChatResponse blocks
-        if hasattr(response, "content") and response.content:
+        
+        # If response is an async generator (e.g. streaming fallback), consume it
+        import inspect
+        if inspect.isasyncgen(response):
+            last_content = ""
+            async for chunk in response:
+                content = chunk.get("content")
+                if isinstance(content, str):
+                    last_content = content
+                elif isinstance(content, list):
+                    parts = []
+                    for block in content:
+                        if isinstance(block, dict) and "text" in block:
+                            parts.append(block["text"])
+                        elif hasattr(block, "text"):
+                            parts.append(block.text)
+                    last_content = "".join(parts)
+            return last_content
+
+        if getattr(response, "text", None):
+            return response.text
+        
+        # Fallback if content handles are used
+        content = getattr(response, "content", None)
+        if isinstance(content, str):
+            return content
+        elif content:
             parts = []
-            for block in response.content:
+            for block in content:
                 if isinstance(block, dict) and "text" in block:
                     parts.append(block["text"])
                 elif hasattr(block, "text"):

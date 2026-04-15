@@ -1,7 +1,7 @@
 """ORION — Hierarchical OS Automation Agent.
 
 Combines AgentScope orchestration, HiClaw agent clusters,
-Composio MCP tool integrations, and a tiered LLM backend
+MCP tool integrations, and a tiered LLM backend
 (Qwen 2.5 / vLLM → Groq free tier → OpenRouter).
 
 Public API Surface

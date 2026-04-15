@@ -1,6 +1,6 @@
-"""GitHub tool category — typed wrappers for Composio GitHub actions.
+"""GitHub tool category — typed wrappers for MCP GitHub actions.
 
-Each method maps to a specific Composio action name and provides
+Each method maps to a specific MCP action name and provides
 typed parameters and docstrings for IDE/LLM clarity.
 
 Depends On
@@ -13,7 +13,7 @@ from orion.tools.mcp_client import MCPClient, ToolResult
 
 
 class GitHubTools:
-    """Typed wrappers for GitHub Composio actions.
+    """Typed wrappers for GitHub MCP actions.
 
     Args:
         client: MCPClient instance for invocation.

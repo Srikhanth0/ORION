@@ -1,0 +1,33 @@
+# ═══════════════════════════════════════════════════════════════
+# ORION — MCP Sandbox Configuration (Podman)
+# ═══════════════════════════════════════════════════════════════
+# These servers run inside an isolated Podman container.
+#
+# Usage:
+#   When safe_mode=True, ToolRegistry loads this instead of servers.yaml.
+
+servers:
+  os_tools:
+    command: podman
+    args:
+      - "run"
+      - "-i"
+      - "--rm"
+      - "node:20-slim"
+      - "npx"
+      - "-y"
+      - "@modelcontextprotocol/server-filesystem"
+      - "/tmp"
+    env: {}
+
+  browser_tools:
+    command: podman
+    args:
+      - "run"
+      - "-i"
+      - "--rm"
+      - "mcr.microsoft.com/playwright:v1.49.0-noble"
+      - "npx"
+      - "-y"
+      - "@playwright/mcp@latest"
+    env: {}

@@ -117,7 +117,7 @@ class PlanError(OrionError):
 
 
 class ToolError(OrionError):
-    """Raised when a Composio/MCP tool invocation fails.
+    """Raised when an MCP tool invocation fails.
 
     Args:
         message: Description of the tool failure.

@@ -1,4 +1,4 @@
-# ORION — Docker ignore
+# ORION — Container ignore (Podman / Docker compatible)
 __pycache__/
 *.pyc
 *.pyo
@@ -20,6 +20,8 @@ infra/
 uv.lock
 Makefile
 docker-compose.yml
+podman-compose.yml
 Dockerfile
 .dockerignore
 .gitignore
+.orion_memory/

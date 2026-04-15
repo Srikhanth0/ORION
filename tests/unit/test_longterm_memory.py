@@ -1,12 +1,14 @@
-"""Unit tests for LongTermMemory and Retriever."""
+"""Unit tests for LocalLongTermMemory and Retriever."""
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
+
+import numpy as np
 
 import pytest
 
 from orion.memory.embedder import Embedder
-from orion.memory.longterm import LongTermMemory, PastTask
+from orion.memory.longterm import LocalLongTermMemory, LongTermMemory, PastTask
 from orion.memory.retriever import MemoryRetriever
 from orion.memory.working import WorkingMemory
 
@@ -27,7 +29,7 @@ class TestEmbedder:
     def test_encode_singleton(self, mock_st: MagicMock) -> None:
         """Embedder loads model once and returns mock vector."""
         mock_instance = MagicMock()
-        mock_instance.encode.return_value = [[0.1, 0.2]]
+        mock_instance.encode.return_value = np.array([[0.1, 0.2]])
         mock_st.return_value = mock_instance
 
         embedder = Embedder.get_instance()
@@ -41,7 +43,7 @@ class TestEmbedder:
     def test_encode_caching(self, mock_st: MagicMock) -> None:
         """Repeated encode requests use cache."""
         mock_instance = MagicMock()
-        mock_instance.encode.return_value = [[0.1, 0.2]]
+        mock_instance.encode.return_value = np.array([[0.1, 0.2]])
         mock_st.return_value = mock_instance
 
         embedder = Embedder.get_instance()
@@ -56,8 +58,8 @@ class TestEmbedder:
     def test_encode_batch(self, mock_st: MagicMock) -> None:
         """encode_batch handles a mix of cached and uncached texts."""
         mock_instance = MagicMock()
-        # Mock returns 2 embeddings for the 2 new string
-        mock_instance.encode.return_value = [[1.0], [2.0]]
+        # Mock returns 2 embeddings for the 2 new strings
+        mock_instance.encode.return_value = np.array([[1.0], [2.0]])
         mock_st.return_value = mock_instance
 
         embedder = Embedder.get_instance()
@@ -72,64 +74,100 @@ class TestEmbedder:
         assert vectors[2] == [2.0]  # new
 
 
-class TestLongTermMemory:
-    """Tests for LongTermMemory logic (mocked Qdrant)."""
+class TestLocalLongTermMemory:
+    """Tests for LocalLongTermMemory logic (mocked ChromaDB)."""
 
-    @patch("qdrant_client.QdrantClient")
-    def test_lazy_connection(self, mock_qdrant: MagicMock) -> None:
+    @patch("chromadb.PersistentClient")
+    def test_lazy_connection(self, mock_chromadb: MagicMock) -> None:
         """Client connects only on first use."""
-        memory = LongTermMemory()
-        mock_qdrant.assert_not_called()
+        memory = LocalLongTermMemory()
+        mock_chromadb.assert_not_called()
 
         memory._get_client()
-        mock_qdrant.assert_called_once()
+        mock_chromadb.assert_called_once()
 
-    @patch("orion.memory.longterm.LongTermMemory._get_client")
+    @patch("orion.memory.longterm.LocalLongTermMemory._get_client")
     def test_store_routing(self, mock_get_client: MagicMock) -> None:
         """Success/failure routes to appropriate collections."""
         mock_client = MagicMock()
+        mock_collection = MagicMock()
+        mock_failure_collection = MagicMock()
         mock_get_client.return_value = mock_client
 
         embedder = MagicMock()
         embedder.encode.return_value = [0.1]
 
-        memory = LongTermMemory(embedder=embedder)
+        memory = LocalLongTermMemory(embedder=embedder)
+        memory._collection = mock_collection
+        memory._failure_collection = mock_failure_collection
 
         # Success - routes to main collection
         memory.store("test", {}, "", success=True)
-        call_args = mock_client.upsert.call_args[1]
-        assert call_args["collection_name"] == "orion_tasks"
+        mock_collection.upsert.assert_called_once()
+        mock_failure_collection.upsert.assert_not_called()
+
+        # Reset mocks
+        mock_collection.reset_mock()
+        mock_failure_collection.reset_mock()
 
         # Failure - routes to failure collection
         memory.store("fail", {}, "", success=False)
-        call_args = mock_client.upsert.call_args[1]
-        assert call_args["collection_name"] == "orion_failures"
+        mock_failure_collection.upsert.assert_called_once()
+        mock_collection.upsert.assert_not_called()
 
-    @patch("orion.memory.longterm.LongTermMemory._get_client")
+    @patch("orion.memory.longterm.LocalLongTermMemory._get_client")
     def test_retrieve(self, mock_get_client: MagicMock) -> None:
-        """Retrieve parses Qdrant points into PastTask."""
+        """Retrieve parses ChromaDB results into PastTask."""
         mock_client = MagicMock()
-        mock_point = MagicMock()
-        mock_point.id = "123"
-        mock_point.score = 0.95
-        mock_point.payload = {
-            "task_description": "Find files",
-            "execution_plan": '{"steps": []}',
-            "success": True,
+        mock_collection = MagicMock()
+
+        # ChromaDB query returns nested lists
+        mock_collection.query.return_value = {
+            "ids": [["123"]],
+            "metadatas": [[{
+                "task_description": "Find files",
+                "execution_plan": '{"steps": []}',
+                "success": True,
+                "tools_used": "[]",
+            }]],
+            "distances": [[0.05]],  # cosine distance
         }
-        mock_client.search.return_value = [mock_point]
         mock_get_client.return_value = mock_client
 
         embedder = MagicMock()
         embedder.encode.return_value = [0.1]
 
-        memory = LongTermMemory(embedder=embedder)
+        memory = LocalLongTermMemory(embedder=embedder)
+        memory._collection = mock_collection
         results = memory.retrieve("query")
 
         assert len(results) == 1
         assert results[0].doc_id == "123"
         assert results[0].task_description == "Find files"
         assert results[0].success is True
+        assert results[0].score == pytest.approx(0.95)
+
+    @patch("orion.memory.longterm.LocalLongTermMemory._get_client")
+    def test_clear(self, mock_get_client: MagicMock) -> None:
+        """Clear deletes and recreates collections."""
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+
+        memory = LocalLongTermMemory()
+        memory._collection = MagicMock()
+        memory._failure_collection = MagicMock()
+        memory._client = mock_client
+
+        memory.clear()
+
+        # Should delete both collections
+        assert mock_client.delete_collection.call_count == 2
+        # Should recreate via get_or_create_collection
+        assert mock_client.get_or_create_collection.call_count == 2
+
+    def test_backward_compatible_alias(self) -> None:
+        """LongTermMemory alias points to LocalLongTermMemory."""
+        assert LongTermMemory is LocalLongTermMemory
 
 
 class TestMemoryRetriever:

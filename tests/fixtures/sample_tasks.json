@@ -1,72 +1,177 @@
 [
   {
     "id": 1,
-    "instruction": "Create /tmp/hello.txt with content 'hello world'",
+    "instruction": "List all files in /tmp directory",
     "expected_status": "DONE",
-    "category": "file",
+    "category": "os",
     "context": {}
   },
   {
     "id": 2,
-    "instruction": "List all Python files in /workspace recursively",
+    "instruction": "Read the contents of /etc/hostname",
     "expected_status": "DONE",
-    "category": "shell",
+    "category": "os",
     "context": {}
   },
   {
     "id": 3,
-    "instruction": "Clone the public GitHub repo https://github.com/octocat/Hello-World",
+    "instruction": "Create /tmp/hello.txt with content 'hello world'",
     "expected_status": "DONE",
-    "category": "github",
-    "context": {"mock": true}
-  },
-  {
-    "id": 4,
-    "instruction": "Create a GitHub issue titled 'Bug: Login broken' in repo octocat/Hello-World",
-    "expected_status": "DONE",
-    "category": "github",
-    "context": {"mock": true}
-  },
-  {
-    "id": 5,
-    "instruction": "Send a Slack message to #general saying 'Deploy complete'",
-    "expected_status": "DONE",
-    "category": "saas",
-    "context": {"mock": true}
-  },
-  {
-    "id": 6,
-    "instruction": "Run 'echo hello' in the shell and capture stdout",
-    "expected_status": "DONE",
-    "category": "shell",
+    "category": "os",
     "context": {}
   },
   {
+    "id": 4,
+    "instruction": "Run 'echo hello' in the shell and capture stdout",
+    "expected_status": "DONE",
+    "category": "os",
+    "context": {}
+  },
+  {
+    "id": 5,
+    "instruction": "Find all lines containing 'import' in /workspace/orion/__init__.py",
+    "expected_status": "DONE",
+    "category": "os",
+    "context": {}
+  },
+  {
+    "id": 6,
+    "instruction": "Open the URL https://example.com in a browser",
+    "expected_status": "DONE",
+    "category": "browser",
+    "context": {"mock": true}
+  },
+  {
     "id": 7,
-    "instruction": "Take a screenshot of https://example.com",
+    "instruction": "Click the 'More information...' link on https://example.com",
     "expected_status": "DONE",
     "category": "browser",
     "context": {"mock": true}
   },
   {
     "id": 8,
-    "instruction": "Store a document titled 'Meeting Notes' in Notion workspace",
+    "instruction": "Fill in the search form on https://google.com with query 'ORION agent'",
+    "expected_status": "DONE",
+    "category": "browser",
+    "context": {"mock": true}
+  },
+  {
+    "id": 9,
+    "instruction": "Extract the page title text from https://example.com",
+    "expected_status": "DONE",
+    "category": "browser",
+    "context": {"mock": true}
+  },
+  {
+    "id": 10,
+    "instruction": "Take a screenshot of https://example.com",
+    "expected_status": "DONE",
+    "category": "browser",
+    "context": {"mock": true}
+  },
+  {
+    "id": 11,
+    "instruction": "List all public repos for GitHub user 'octocat'",
+    "expected_status": "DONE",
+    "category": "github",
+    "context": {"mock": true}
+  },
+  {
+    "id": 12,
+    "instruction": "Create a GitHub issue titled 'Bug: Login broken' in repo octocat/Hello-World",
+    "expected_status": "DONE",
+    "category": "github",
+    "context": {"mock": true}
+  },
+  {
+    "id": 13,
+    "instruction": "Open a pull request from branch 'feature/fix' to 'main' in octocat/Hello-World",
+    "expected_status": "DONE",
+    "category": "github",
+    "context": {"mock": true}
+  },
+  {
+    "id": 14,
+    "instruction": "Clone the public GitHub repo https://github.com/octocat/Hello-World",
+    "expected_status": "DONE",
+    "category": "github",
+    "context": {"mock": true}
+  },
+  {
+    "id": 15,
+    "instruction": "Read the contents of README.md from repo octocat/Hello-World",
+    "expected_status": "DONE",
+    "category": "github",
+    "context": {"mock": true}
+  },
+  {
+    "id": 16,
+    "instruction": "Describe what is currently shown on the screen",
+    "expected_status": "DONE",
+    "category": "vision",
+    "context": {"mock": true}
+  },
+  {
+    "id": 17,
+    "instruction": "Click the 'Submit' button on the current screen",
+    "expected_status": "DONE",
+    "category": "vision",
+    "context": {"mock": true}
+  },
+  {
+    "id": 18,
+    "instruction": "Type 'hello world' into the currently focused text field",
+    "expected_status": "DONE",
+    "category": "vision",
+    "context": {"mock": true}
+  },
+  {
+    "id": 19,
+    "instruction": "Clone repo octocat/Hello-World, read README.md, create a summary file /tmp/summary.txt, and commit it",
+    "expected_status": "DONE",
+    "category": "multi-step",
+    "context": {"mock": true}
+  },
+  {
+    "id": 20,
+    "instruction": "Create file /tmp/chain_test.txt with 'test data', then read it back and verify content matches",
+    "expected_status": "DONE",
+    "category": "multi-step",
+    "context": {}
+  },
+  {
+    "id": 21,
+    "instruction": "Read /nonexistent/path/that/does/not/exist.txt",
+    "expected_status": "FAILED",
+    "category": "error",
+    "context": {}
+  },
+  {
+    "id": 22,
+    "instruction": "Write to /etc/shadow (permission denied)",
+    "expected_status": "FAILED",
+    "category": "error",
+    "context": {}
+  },
+  {
+    "id": 23,
+    "instruction": "Fetch data from https://httpstat.us/500 (simulate server error)",
+    "expected_status": "FAILED",
+    "category": "error",
+    "context": {"mock": true}
+  },
+  {
+    "id": 24,
+    "instruction": "Send a Slack message to #general saying 'Deploy complete'",
     "expected_status": "DONE",
     "category": "saas",
     "context": {"mock": true}
   },
   {
-    "id": 9,
-    "instruction": "Create file /tmp/chain_test.txt with 'test data', then read it back and verify content matches",
+    "id": 25,
+    "instruction": "Store a document titled 'Meeting Notes' in Notion workspace",
     "expected_status": "DONE",
-    "category": "chain",
-    "context": {}
-  },
-  {
-    "id": 10,
-    "instruction": "Clone repo octocat/Hello-World, run tests, and report results as a GitHub issue",
-    "expected_status": "DONE",
-    "category": "chain",
+    "category": "saas",
     "context": {"mock": true}
   }
 ]

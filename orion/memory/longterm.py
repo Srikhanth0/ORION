@@ -1,4 +1,4 @@
-"""LongTermMemory — persistent cross-task memory backed by Qdrant.
+"""LocalLongTermMemory — persistent cross-task memory backed by ChromaDB.
 
 Stores successful task results with embeddings for semantic retrieval.
 Failed tasks go to a separate failure collection.
@@ -10,12 +10,13 @@ Module Contract
 
 Depends On
 ----------
-- ``qdrant_client`` (QdrantClient)
+- ``chromadb`` (PersistentClient)
 - ``orion.memory.embedder`` (Embedder)
 """
 from __future__ import annotations
 
 import json
+import os
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -29,6 +30,7 @@ logger = structlog.get_logger(__name__)
 
 _DEFAULT_COLLECTION = "orion_tasks"
 _FAILURE_COLLECTION = "orion_failures"
+_DEFAULT_PERSIST_PATH = ".orion_memory"
 
 
 @dataclass
@@ -60,56 +62,57 @@ class PastTask:
     doc_id: str = ""
 
 
-class LongTermMemory:
-    """Persistent cross-task memory backed by Qdrant.
+class LocalLongTermMemory:
+    """Persistent cross-task memory backed by embedded ChromaDB.
 
     Stores successful tasks in the main collection and
     failures in a separate collection. Provides semantic
     retrieval for few-shot examples.
 
     Args:
-        url: Qdrant server URL.
+        persist_path: Directory for ChromaDB storage.
         collection: Main collection name.
-        api_key: Qdrant API key (optional).
         embedder: Embedder instance.
     """
 
     def __init__(
         self,
-        url: str = "http://localhost:6333",
+        persist_path: str | None = None,
         collection: str = _DEFAULT_COLLECTION,
-        api_key: str | None = None,
         embedder: Embedder | None = None,
     ) -> None:
-        self._url = url
-        self._collection = collection
-        self._failure_collection = _FAILURE_COLLECTION
-        self._api_key = api_key
+        self._persist_path = persist_path or os.environ.get(
+            "CHROMA_PERSIST_PATH", _DEFAULT_PERSIST_PATH
+        )
+        self._collection_name = collection
+        self._failure_collection_name = _FAILURE_COLLECTION
         self._embedder = embedder or Embedder.get_instance()
         self._client: Any = None
+        self._collection: Any = None
+        self._failure_collection: Any = None
+        self._fallback: dict[str, list[PastTask]] = {}
 
     def _get_client(self) -> Any:
-        """Lazy-load the Qdrant client."""
+        """Lazy-load the ChromaDB client."""
         if self._client is not None:
             return self._client
 
         try:
-            from qdrant_client import QdrantClient
+            import chromadb
 
-            self._client = QdrantClient(
-                url=self._url,
-                api_key=self._api_key,
+            self._client = chromadb.PersistentClient(
+                path=self._persist_path
             )
             self._ensure_collections()
             logger.info(
-                "qdrant_connected",
-                url=self._url,
-                collection=self._collection,
+                "chromadb_connected",
+                persist_path=self._persist_path,
+                collection=self._collection_name,
             )
         except Exception as exc:
             logger.warning(
-                "qdrant_connection_failed",
-                url=self._url,
+                "chromadb_connection_failed",
+                persist_path=self._persist_path,
                 error=str(exc),
             )
             self._client = None
@@ -117,30 +120,20 @@ class LongTermMemory:
         return self._client
 
     def _ensure_collections(self) -> None:
-        """Create collections if they don't exist."""
-        from qdrant_client.models import (
-            Distance,
-            VectorParams,
+        """Create or get collections."""
+        self._collection = self._client.get_or_create_collection(
+            name=self._collection_name,
+            metadata={"hnsw:space": "cosine"},
         )
-
-        for name in (
-            self._collection,
-            self._failure_collection,
-        ):
-            try:
-                self._client.get_collection(name)
-            except Exception:
-                self._client.create_collection(
-                    collection_name=name,
-                    vectors_config=VectorParams(
-                        size=384,
-                        distance=Distance.COSINE,
-                    ),
-                )
-                logger.info(
-                    "collection_created",
-                    collection=name,
-                )
+        self._failure_collection = self._client.get_or_create_collection(
+            name=self._failure_collection_name,
+            metadata={"hnsw:space": "cosine"},
+        )
+        logger.info(
+            "collections_ready",
+            main=self._collection_name,
+            failure=self._failure_collection_name,
+        )
 
     def store(
         self,
@@ -172,50 +165,56 @@ class LongTermMemory:
         doc_id = str(uuid.uuid4())
         embedding = self._embedder.encode(task_description)
 
-        payload = {
+        metadata = {
             "task_description": task_description,
             "execution_plan": json.dumps(execution_plan),
             "step_results_summary": step_results_summary,
             "success": success,
             "duration_seconds": duration_seconds,
-            "tools_used": tools_used or [],
+            "tools_used": json.dumps(tools_used or []),
             "timestamp": datetime.now(
                 tz=UTC
             ).isoformat(),
-            "agent_versions": agent_versions or {},
+            "agent_versions": json.dumps(
+                agent_versions or {}
+            ),
         }
-
-        collection = (
-            self._collection if success
-            else self._failure_collection
-        )
 
         client = self._get_client()
         if client is None:
             logger.warning(
                 "longterm_store_skipped",
-                reason="no_qdrant_connection",
+                reason="no_chromadb_connection",
             )
+            # ORION-FIX: Graceful degradation when memory vector DB is unavailable
+            self._fallback.setdefault('fallback_key', []).append(PastTask(
+                task_description=task_description,
+                execution_plan=execution_plan,
+                step_results_summary=step_results_summary,
+                success=success,
+                duration_seconds=duration_seconds,
+                tools_used=tools_used or [],
+                doc_id=doc_id,
+            ))
             return doc_id
 
         try:
-            from qdrant_client.models import PointStruct
+            target = (
+                self._collection if success
+                else self._failure_collection
+            )
 
-            client.upsert(
-                collection_name=collection,
-                points=[
-                    PointStruct(
-                        id=doc_id,
-                        vector=embedding,
-                        payload=payload,
-                    )
-                ],
+            target.upsert(
+                ids=[doc_id],
+                embeddings=[embedding],
+                metadatas=[metadata],
+                documents=[task_description],
             )
 
             logger.info(
                 "longterm_stored",
                 doc_id=doc_id,
-                collection=collection,
+                collection=target.name,
                 success=success,
             )
         except Exception as exc:
@@ -246,20 +245,37 @@ class LongTermMemory:
 
         client = self._get_client()
         if client is None:
-            return []
+            # naive fallback: return last top_k stored items
+            all_items = [p for v in self._fallback.values() for p in v]
+            return all_items[-top_k:] if all_items else []
 
         try:
-            results = client.search(
-                collection_name=self._collection,
-                query_vector=embedding,
-                limit=top_k,
-                score_threshold=score_threshold,
+            results = self._collection.query(
+                query_embeddings=[embedding],
+                n_results=top_k,
+                include=["metadatas", "distances"],
             )
 
             past_tasks: list[PastTask] = []
-            for hit in results:
-                payload = hit.payload or {}
-                plan_str = payload.get(
+
+            if not results or not results.get("ids"):
+                return []
+
+            ids = results["ids"][0]
+            metadatas = results["metadatas"][0]
+            distances = results["distances"][0]
+
+            for i, doc_id in enumerate(ids):
+                metadata = metadatas[i] if metadatas else {}
+                # ChromaDB returns distances; for cosine,
+                # similarity = 1 - distance
+                distance = distances[i] if distances else 1.0
+                score = 1.0 - distance
+
+                if score < score_threshold:
+                    continue
+
+                plan_str = metadata.get(
                     "execution_plan", "{}"
                 )
                 try:
@@ -267,27 +283,31 @@ class LongTermMemory:
                 except (json.JSONDecodeError, TypeError):
                     plan = {}
 
+                tools_str = metadata.get("tools_used", "[]")
+                try:
+                    tools = json.loads(tools_str)
+                except (json.JSONDecodeError, TypeError):
+                    tools = []
+
                 past_tasks.append(
                     PastTask(
-                        task_description=payload.get(
+                        task_description=metadata.get(
                             "task_description", ""
                         ),
                         execution_plan=plan,
-                        step_results_summary=payload.get(
+                        step_results_summary=metadata.get(
                             "step_results_summary", ""
                         ),
-                        success=payload.get("success", True),
-                        duration_seconds=payload.get(
+                        success=metadata.get("success", True),
+                        duration_seconds=metadata.get(
                             "duration_seconds", 0.0
                         ),
-                        tools_used=payload.get(
-                            "tools_used", []
-                        ),
-                        timestamp=payload.get(
+                        tools_used=tools,
+                        timestamp=metadata.get(
                             "timestamp", ""
                         ),
-                        score=hit.score,
-                        doc_id=str(hit.id),
+                        score=score,
+                        doc_id=str(doc_id),
                     )
                 )
 
@@ -300,6 +320,27 @@ class LongTermMemory:
             )
             return []
 
+    def clear(self) -> None:
+        """Delete and recreate all collections."""
+        client = self._get_client()
+        if client is None:
+            return
+
+        try:
+            client.delete_collection(self._collection_name)
+            client.delete_collection(
+                self._failure_collection_name
+            )
+            self._collection = None
+            self._failure_collection = None
+            self._ensure_collections()
+            logger.info("longterm_memory_cleared")
+        except Exception as exc:
+            logger.warning(
+                "longterm_clear_failed",
+                error=str(exc),
+            )
+
     @property
     def document_count(self) -> int:
         """Number of documents in the main collection."""
@@ -308,7 +349,10 @@ class LongTermMemory:
             return 0
 
         try:
-            info = client.get_collection(self._collection)
-            return info.points_count or 0
+            return self._collection.count()
         except Exception:
             return 0
+
+
+# Backward-compatible alias
+LongTermMemory = LocalLongTermMemory

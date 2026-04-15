@@ -9,15 +9,31 @@ Usage:
     python scripts/eval_task.py --task 1
     python scripts/eval_task.py --task 9 --verbose
 """
+
 from __future__ import annotations
 
-import argparse
 import asyncio
+import argparse
 import json
 import sys
 import time
 from datetime import UTC, datetime
 from pathlib import Path
+import io
+
+# Windows event loop fix (must be FIRST, before any asyncio import side-effects)
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+# ORION-FIX: Force UTF-8 output on Windows to avoid cp1252 UnicodeEncodeError
+if sys.platform == "win32" and sys.stdout.encoding != "utf-8":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+
+# ORION-FIX: Add project root to sys.path so 'orion' package can be imported
+_project_root = Path(__file__).resolve().parent.parent
+if str(_project_root) not in sys.path:
+    sys.path.insert(0, str(_project_root))
 
 _FIXTURES = (
     Path(__file__).resolve().parent.parent
@@ -45,6 +61,9 @@ def run_task(task: dict, verbose: bool = False) -> dict:
     start = time.monotonic()
 
     try:
+        from orion.agentscope_config import init_agentscope
+        init_agentscope()
+        
         from agentscope.message import Msg
 
         from orion.agents.executor import ExecutorAgent
@@ -72,10 +91,32 @@ def run_task(task: dict, verbose: bool = False) -> dict:
             verify_msg = await verifier.reply(exec_msg)
             supervisor = SupervisorAgent()
             final_msg = await supervisor.reply(verify_msg)
-            return {"result": final_msg.content[:200]}
 
-        asyncio.run(_run())
-        status = "DONE"
+            try:
+                result_data = json.loads(final_msg.content)
+                decision = result_data.get("decision", {})
+                action = decision.get("action", "COMPLETE")
+                if action == "COMPLETE":
+                    status = "DONE"
+                else:
+                    status = "FAILED"
+                error = None
+            except (json.JSONDecodeError, KeyError):
+                status = "DONE"
+                error = None
+
+            return {"result": final_msg.content[:200], "decision": decision}
+
+        # Each task gets a FRESH event loop — no state leakage between tasks
+        async def run_with_fresh_loop():
+            if sys.platform == "win32":
+                asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+            return await _run()
+        
+        run_result = asyncio.run(run_with_fresh_loop())
+        decision = run_result.get("decision", {})
+        action = decision.get("action", "COMPLETE")
+        status = "DONE" if action == "COMPLETE" else "FAILED"
         error = None
     except Exception as exc:
         status = "FAILED"

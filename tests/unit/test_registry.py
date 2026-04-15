@@ -6,6 +6,7 @@ import pytest
 from orion.core.exceptions import ToolNotFoundError
 from orion.tools.registry import (
     ComposioToolWrapper,
+    MCPToolWrapper,
     ToolCategory,
     ToolRegistry,
 )
@@ -22,9 +23,9 @@ def _make_tool(
     description: str = "Create a GitHub issue",
     category: ToolCategory = ToolCategory.GITHUB,
     is_destructive: bool = False,
-) -> ComposioToolWrapper:
+) -> MCPToolWrapper:
     """Create a test tool wrapper."""
-    return ComposioToolWrapper(
+    return MCPToolWrapper(
         name=name,
         description=description,
         category=category,
@@ -131,3 +132,21 @@ class TestToolRegistry:
         assert registry._infer_category("BROWSER_X") == ToolCategory.BROWSER
         assert registry._infer_category("SLACK_X") == ToolCategory.SAAS
         assert registry._infer_category("UNKNOWN") == ToolCategory.SYSTEM
+
+    def test_backward_compat_alias(self) -> None:
+        """ComposioToolWrapper is an alias for MCPToolWrapper."""
+        assert ComposioToolWrapper is MCPToolWrapper
+        tool = ComposioToolWrapper(
+            name="COMPAT_TOOL",
+            description="Backward compat test",
+        )
+        assert isinstance(tool, MCPToolWrapper)
+
+    def test_mcp_tool_wrapper_server_category(self) -> None:
+        """MCPToolWrapper has server_category field."""
+        tool = MCPToolWrapper(
+            name="read_file",
+            description="Read a file",
+            server_category="os_tools",
+        )
+        assert tool.server_category == "os_tools"

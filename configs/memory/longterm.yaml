@@ -2,9 +2,9 @@
 # ORION — Long-term Memory Configuration
 # ═══════════════════════════════════════════════════════════════
 
-# Qdrant vector database
-backend: qdrant
-url: http://localhost:6333
+# ChromaDB embedded vector database
+backend: chromadb
+persist_path: ".orion_memory"
 collection: orion_tasks
 failure_collection: orion_failures
 
