@@ -1,4 +1,5 @@
 """Unit tests for LocalLongTermMemory and Retriever."""
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
@@ -123,12 +124,16 @@ class TestLocalLongTermMemory:
         # ChromaDB query returns nested lists
         mock_collection.query.return_value = {
             "ids": [["123"]],
-            "metadatas": [[{
-                "task_description": "Find files",
-                "execution_plan": '{"steps": []}',
-                "success": True,
-                "tools_used": "[]",
-            }]],
+            "metadatas": [
+                [
+                    {
+                        "task_description": "Find files",
+                        "execution_plan": '{"steps": []}',
+                        "success": True,
+                        "tools_used": "[]",
+                    }
+                ]
+            ],
             "distances": [[0.05]],  # cosine distance
         }
         mock_get_client.return_value = mock_client

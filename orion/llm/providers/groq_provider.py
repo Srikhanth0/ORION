@@ -17,6 +17,7 @@ Depends On
 - ``orion.llm.quota`` (QuotaTracker)
 - ``orion.core.exceptions`` (LLMError, QuotaExceededError)
 """
+
 from __future__ import annotations
 
 import contextlib

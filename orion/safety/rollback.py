@@ -13,6 +13,7 @@ Depends On
 ----------
 - ``orion.core.exceptions`` (RollbackError)
 """
+
 from __future__ import annotations
 
 import json
@@ -48,11 +49,7 @@ class RollbackPoint:
     params: dict[str, Any]
     rollback_type: str = "unknown"
     rollback_data: dict[str, Any] = field(default_factory=dict)
-    created_at: str = field(
-        default_factory=lambda: datetime.now(
-            tz=UTC
-        ).isoformat()
-    )
+    created_at: str = field(default_factory=lambda: datetime.now(tz=UTC).isoformat())
 
 
 class RollbackEngine:
@@ -72,9 +69,7 @@ class RollbackEngine:
         checkpoint_dir: str | Path | None = None,
         max_checkpoints: int = 50,
     ) -> None:
-        self._checkpoint_dir = Path(
-            checkpoint_dir or "checkpoints"
-        )
+        self._checkpoint_dir = Path(checkpoint_dir or "checkpoints")
         self._max_checkpoints = max_checkpoints
         self._stacks: dict[str, list[RollbackPoint]] = {}
 
@@ -100,9 +95,7 @@ class RollbackEngine:
             The created RollbackPoint.
         """
         key = task_id or "default"
-        rollback_type, rollback_data = self._capture_state(
-            tool_name, params
-        )
+        rollback_type, rollback_data = self._capture_state(tool_name, params)
 
         point = RollbackPoint(
             subtask_id=subtask_id,
@@ -150,9 +143,7 @@ class RollbackEngine:
         stack = self._stacks.get(key, [])
 
         if not stack:
-            logger.info(
-                "rollback_nothing_to_do", task_id=task_id
-            )
+            logger.info("rollback_nothing_to_do", task_id=task_id)
             return ["No checkpoints to rollback"]
 
         results: list[str] = []
@@ -178,16 +169,10 @@ class RollbackEngine:
 
             try:
                 self._restore(point)
-                msg = (
-                    f"[OK] Rolled back '{point.tool_name}' "
-                    f"(subtask {point.subtask_id})"
-                )
+                msg = f"[OK] Rolled back '{point.tool_name}' (subtask {point.subtask_id})"
                 results.append(msg)
             except Exception as exc:
-                msg = (
-                    f"[FAIL] Could not rollback "
-                    f"'{point.tool_name}': {exc}"
-                )
+                msg = f"[FAIL] Could not rollback '{point.tool_name}': {exc}"
                 logger.error(
                     "rollback_failed",
                     subtask_id=point.subtask_id,
@@ -218,9 +203,7 @@ class RollbackEngine:
         """
         return bool(self._stacks.get(task_id))
 
-    def _capture_state(
-        self, tool_name: str, params: dict[str, Any]
-    ) -> tuple[str, dict[str, Any]]:
+    def _capture_state(self, tool_name: str, params: dict[str, Any]) -> tuple[str, dict[str, Any]]:
         """Detect rollback type and capture current state.
 
         Args:
@@ -241,9 +224,7 @@ class RollbackEngine:
                     try:
                         return "file", {
                             "path": str(p),
-                            "original_content": p.read_text(
-                                encoding="utf-8"
-                            ),
+                            "original_content": p.read_text(encoding="utf-8"),
                         }
                     except Exception:
                         return "file", {
@@ -268,8 +249,12 @@ class RollbackEngine:
         if any(
             k in name_lower
             for k in (
-                "send", "email", "slack", "post",
-                "webhook", "notify",
+                "send",
+                "email",
+                "slack",
+                "post",
+                "webhook",
+                "notify",
             )
         ):
             return "irreversible", {}
@@ -287,9 +272,7 @@ class RollbackEngine:
         """
         if point.rollback_type == "file":
             path = point.rollback_data.get("path", "")
-            original = point.rollback_data.get(
-                "original_content", ""
-            )
+            original = point.rollback_data.get("original_content", "")
 
             if not path:
                 return
@@ -313,14 +296,10 @@ class RollbackEngine:
         elif point.rollback_type == "git":
             logger.info(
                 "rollback_git_placeholder",
-                operation=point.rollback_data.get(
-                    "operation", ""
-                ),
+                operation=point.rollback_data.get("operation", ""),
             )
 
-    def _persist(
-        self, task_id: str, point: RollbackPoint
-    ) -> None:
+    def _persist(self, task_id: str, point: RollbackPoint) -> None:
         """Persist a checkpoint to disk.
 
         Args:
@@ -331,9 +310,7 @@ class RollbackEngine:
             task_dir = self._checkpoint_dir / task_id
             task_dir.mkdir(parents=True, exist_ok=True)
 
-            filename = (
-                f"{point.subtask_id}_{point.tool_name}.json"
-            )
+            filename = f"{point.subtask_id}_{point.tool_name}.json"
             filepath = task_dir / filename
 
             with open(filepath, "w") as f:

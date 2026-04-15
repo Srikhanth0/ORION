@@ -1,4 +1,5 @@
 """Unit tests for VerifierAgent."""
+
 from __future__ import annotations
 
 import json
@@ -40,10 +41,16 @@ class TestVerifierAgent:
     async def test_all_pass(self) -> None:
         """All steps successful → PASS."""
         agent = VerifierAgent()  # No model — pure assertion mode
-        msg = _make_results_msg([
-            {"subtask_id": "s1", "ok": True, "output": "file created",
-             "expected_output": "file created"},
-        ])
+        msg = _make_results_msg(
+            [
+                {
+                    "subtask_id": "s1",
+                    "ok": True,
+                    "output": "file created",
+                    "expected_output": "file created",
+                },
+            ]
+        )
 
         result = await agent.reply(msg)
         report = json.loads(result.content)
@@ -54,10 +61,11 @@ class TestVerifierAgent:
     async def test_execution_failure_hard_fail(self) -> None:
         """Execution failure → HARD_FAIL."""
         agent = VerifierAgent()
-        msg = _make_results_msg([
-            {"subtask_id": "s1", "ok": False, "output": None,
-             "error": "tool crashed"},
-        ])
+        msg = _make_results_msg(
+            [
+                {"subtask_id": "s1", "ok": False, "output": None, "error": "tool crashed"},
+            ]
+        )
 
         result = await agent.reply(msg)
         report = json.loads(result.content)
@@ -68,10 +76,16 @@ class TestVerifierAgent:
     async def test_assertion_mismatch_soft_fail(self) -> None:
         """Output doesn't match expected → SOFT_FAIL."""
         agent = VerifierAgent()
-        msg = _make_results_msg([
-            {"subtask_id": "s1", "ok": True, "output": "wrong output",
-             "expected_output": "expected something else entirely"},
-        ])
+        msg = _make_results_msg(
+            [
+                {
+                    "subtask_id": "s1",
+                    "ok": True,
+                    "output": "wrong output",
+                    "expected_output": "expected something else entirely",
+                },
+            ]
+        )
 
         result = await agent.reply(msg)
         report = json.loads(result.content)
@@ -91,12 +105,12 @@ class TestVerifierAgent:
     async def test_multiple_steps_mixed(self) -> None:
         """Mix of pass and fail steps."""
         agent = VerifierAgent()
-        msg = _make_results_msg([
-            {"subtask_id": "s1", "ok": True, "output": "done",
-             "expected_output": "done"},
-            {"subtask_id": "s2", "ok": False, "output": None,
-             "error": "failed"},
-        ])
+        msg = _make_results_msg(
+            [
+                {"subtask_id": "s1", "ok": True, "output": "done", "expected_output": "done"},
+                {"subtask_id": "s2", "ok": False, "output": None, "error": "failed"},
+            ]
+        )
 
         result = await agent.reply(msg)
         report = json.loads(result.content)

@@ -12,6 +12,7 @@ Depends On
 ----------
 - ``sentence_transformers`` (SentenceTransformer)
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -46,15 +47,11 @@ class Embedder:
     ) -> None:
         self._model_name = model_name
         self._model: Any = None
-        self._cache: OrderedDict[str, list[float]] = (
-            OrderedDict()
-        )
+        self._cache: OrderedDict[str, list[float]] = OrderedDict()
         self._cache_size = cache_size
 
     @classmethod
-    def get_instance(
-        cls, model_name: str = _DEFAULT_MODEL
-    ) -> Embedder:
+    def get_instance(cls, model_name: str = _DEFAULT_MODEL) -> Embedder:
         """Get or create the singleton instance."""
         if cls._instance is None:
             cls._instance = cls(model_name=model_name)
@@ -75,9 +72,7 @@ class Embedder:
                 SentenceTransformer,
             )
 
-            self._model = SentenceTransformer(
-                self._model_name
-            )
+            self._model = SentenceTransformer(self._model_name)
             logger.info(
                 "embedder_loaded",
                 model=self._model_name,
@@ -106,9 +101,7 @@ class Embedder:
         if self._model is None:
             return [0.0] * 384
 
-        embedding = self._model.encode(
-            [text], show_progress_bar=False
-        )[0].tolist()
+        embedding = self._model.encode([text], show_progress_bar=False)[0].tolist()
 
         self._cache[cache_key] = embedding
         if len(self._cache) > self._cache_size:
@@ -116,9 +109,7 @@ class Embedder:
 
         return embedding
 
-    def encode_batch(
-        self, texts: list[str]
-    ) -> list[list[float]]:
+    def encode_batch(self, texts: list[str]) -> list[list[float]]:
         """Encode multiple texts at once.
 
         Uses cache for already-seen inputs, batches the rest.
@@ -148,9 +139,7 @@ class Embedder:
                     results[idx] = [0.0] * 384
             else:
                 batch_texts = [t for _, t in to_encode]
-                embeddings = self._model.encode(
-                    batch_texts, show_progress_bar=False
-                )
+                embeddings = self._model.encode(batch_texts, show_progress_bar=False)
 
                 for j, (idx, text) in enumerate(to_encode):
                     vec = embeddings[j].tolist()
@@ -170,6 +159,4 @@ class Embedder:
     @staticmethod
     def _hash(text: str) -> str:
         """Create a short hash key for cache lookup."""
-        return hashlib.md5(
-            text.encode("utf-8")
-        ).hexdigest()
+        return hashlib.md5(text.encode("utf-8")).hexdigest()

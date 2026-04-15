@@ -14,6 +14,7 @@ Depends On
 ----------
 - Python stdlib + ``pydantic`` only.
 """
+
 from __future__ import annotations
 
 import enum
@@ -90,8 +91,7 @@ class QuotaInfo:
         if self.remaining_tokens is not None and self.remaining_tokens <= 0:
             return True
         return (
-            self.daily_budget_remaining_usd is not None
-            and self.daily_budget_remaining_usd <= 0.0
+            self.daily_budget_remaining_usd is not None and self.daily_budget_remaining_usd <= 0.0
         )
 
     @property
@@ -102,8 +102,7 @@ class QuotaInfo:
         if self.remaining_tokens is not None and self.remaining_tokens < 1000:
             return True
         return (
-            self.daily_budget_remaining_usd is not None
-            and self.daily_budget_remaining_usd < 0.10
+            self.daily_budget_remaining_usd is not None and self.daily_budget_remaining_usd < 0.10
         )
 
 
@@ -192,9 +191,7 @@ COST_TABLE: dict[str, tuple[float, float]] = {
 }
 
 
-def estimate_cost(
-    model: str, input_tokens: int, output_tokens: int
-) -> float | None:
+def estimate_cost(model: str, input_tokens: int, output_tokens: int) -> float | None:
     """Estimate USD cost for a request based on the cost table.
 
     Args:

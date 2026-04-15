@@ -13,6 +13,7 @@ Depends On
 ----------
 - ``orion.llm.providers.base`` (QuotaInfo)
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -67,21 +68,15 @@ class QuotaTracker:
             # Groq/OpenRouter rate-limit headers
             if "x-ratelimit-remaining-requests" in headers:
                 with contextlib.suppress(ValueError, TypeError):
-                    self._remaining_requests = int(
-                        headers["x-ratelimit-remaining-requests"]
-                    )
+                    self._remaining_requests = int(headers["x-ratelimit-remaining-requests"])
 
             if "x-ratelimit-remaining-tokens" in headers:
                 with contextlib.suppress(ValueError, TypeError):
-                    self._remaining_tokens = int(
-                        headers["x-ratelimit-remaining-tokens"]
-                    )
+                    self._remaining_tokens = int(headers["x-ratelimit-remaining-tokens"])
 
             if "x-ratelimit-reset-requests" in headers:
                 with contextlib.suppress(ValueError, TypeError):
-                    self._reset_at_epoch = float(
-                        headers["x-ratelimit-reset-requests"]
-                    )
+                    self._reset_at_epoch = float(headers["x-ratelimit-reset-requests"])
 
     async def record_spend(self, cost_usd: float) -> None:
         """Record a spend amount for budget tracking.
@@ -131,7 +126,5 @@ class QuotaTracker:
         from datetime import UTC, datetime, timedelta
 
         now = datetime.now(UTC)
-        tomorrow = now.replace(
-            hour=0, minute=0, second=0, microsecond=0
-        ) + timedelta(days=1)
+        tomorrow = now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
         return float(calendar.timegm(tomorrow.timetuple()))

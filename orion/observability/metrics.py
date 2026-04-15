@@ -12,6 +12,7 @@ Depends On
 ----------
 - ``prometheus_client`` (Counter, Histogram, Gauge, start_http_server)
 """
+
 from __future__ import annotations
 
 import structlog
@@ -31,27 +32,21 @@ except ImportError:
     _PROMETHEUS_AVAILABLE = False
 
 
-def _make_counter(
-    name: str, doc: str, labels: list[str]
-) -> Counter | None:
+def _make_counter(name: str, doc: str, labels: list[str]) -> Counter | None:
     """Create a Prometheus Counter (or None)."""
     if _PROMETHEUS_AVAILABLE:
         return Counter(name, doc, labels)
     return None
 
 
-def _make_histogram(
-    name: str, doc: str, labels: list[str]
-) -> Histogram | None:
+def _make_histogram(name: str, doc: str, labels: list[str]) -> Histogram | None:
     """Create a Prometheus Histogram (or None)."""
     if _PROMETHEUS_AVAILABLE:
         return Histogram(name, doc, labels)
     return None
 
 
-def _make_gauge(
-    name: str, doc: str, labels: list[str]
-) -> Gauge | None:
+def _make_gauge(name: str, doc: str, labels: list[str]) -> Gauge | None:
     """Create a Prometheus Gauge (or None)."""
     if _PROMETHEUS_AVAILABLE:
         return Gauge(name, doc, labels)
@@ -220,22 +215,14 @@ def record_llm_call(
         cost_usd: Estimated cost.
     """
     if LLM_REQUESTS:
-        LLM_REQUESTS.labels(
-            provider=provider, model=model, status=status
-        ).inc()
+        LLM_REQUESTS.labels(provider=provider, model=model, status=status).inc()
     if LLM_LATENCY:
-        LLM_LATENCY.labels(provider=provider).observe(
-            latency_seconds
-        )
+        LLM_LATENCY.labels(provider=provider).observe(latency_seconds)
     if LLM_TOKENS:
         if input_tokens:
-            LLM_TOKENS.labels(
-                provider=provider, type="input"
-            ).inc(input_tokens)
+            LLM_TOKENS.labels(provider=provider, type="input").inc(input_tokens)
         if output_tokens:
-            LLM_TOKENS.labels(
-                provider=provider, type="output"
-            ).inc(output_tokens)
+            LLM_TOKENS.labels(provider=provider, type="output").inc(output_tokens)
     if LLM_COST and cost_usd > 0:
         LLM_COST.labels(provider=provider).inc(cost_usd)
 
@@ -258,13 +245,9 @@ def record_tool_call(
         latency_seconds: Invocation latency.
     """
     if TOOL_CALLS:
-        TOOL_CALLS.labels(
-            tool=tool, category=category, status=status
-        ).inc()
+        TOOL_CALLS.labels(tool=tool, category=category, status=status).inc()
     if TOOL_LATENCY:
-        TOOL_LATENCY.labels(tool=tool).observe(
-            latency_seconds
-        )
+        TOOL_LATENCY.labels(tool=tool).observe(latency_seconds)
 
 
 def record_task(

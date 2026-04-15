@@ -15,6 +15,7 @@ Depends On
 ----------
 - ``orion.llm.providers.base`` (LLMProvider, ProviderStatus)
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -78,9 +79,7 @@ class HealthMonitor:
         async with self._lock:
             return dict(self._status)
 
-    async def set_status(
-        self, provider_name: str, status: ProviderStatus
-    ) -> None:
+    async def set_status(self, provider_name: str, status: ProviderStatus) -> None:
         """Manually override a provider's status.
 
         Used by the circuit breaker to force UNAVAILABLE status.
@@ -141,28 +140,21 @@ class HealthMonitor:
         """Main polling loop — runs until cancelled."""
         while True:
             tasks = [
-                self._check_provider(name, provider)
-                for name, provider in self._providers.items()
+                self._check_provider(name, provider) for name, provider in self._providers.items()
             ]
             await asyncio.gather(*tasks, return_exceptions=True)
 
             # Calculate backoff based on worst-case failure count
             max_failures = max(self._failure_counts.values(), default=0)
             backoff_idx = min(max_failures, len(_BACKOFF_INTERVALS) - 1)
-            interval = (
-                self._poll_interval
-                if max_failures == 0
-                else _BACKOFF_INTERVALS[backoff_idx]
-            )
+            interval = self._poll_interval if max_failures == 0 else _BACKOFF_INTERVALS[backoff_idx]
 
             await asyncio.sleep(interval)
 
     def start(self) -> None:
         """Start the background health monitoring task."""
         if self._task is None or self._task.done():
-            self._task = asyncio.create_task(
-                self._poll_loop(), name="orion-health-monitor"
-            )
+            self._task = asyncio.create_task(self._poll_loop(), name="orion-health-monitor")
             logger.info(
                 "health_monitor_started",
                 providers=list(self._providers.keys()),
@@ -182,8 +174,5 @@ class HealthMonitor:
 
         Useful to populate initial status before accepting requests.
         """
-        tasks = [
-            self._check_provider(name, provider)
-            for name, provider in self._providers.items()
-        ]
+        tasks = [self._check_provider(name, provider) for name, provider in self._providers.items()]
         await asyncio.gather(*tasks, return_exceptions=True)

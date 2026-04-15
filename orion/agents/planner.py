@@ -4,6 +4,7 @@ Receives a natural language instruction and produces a structured
 execution plan as a TaskDAG-compatible JSON. Uses chain-of-thought
 reasoning with tool awareness.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -81,12 +82,7 @@ def _extract_json_array(text: str) -> list | None:
 
 
 class PlannerAgent(BaseOrionAgent):
-    def __init__(
-        self,
-        name: str = "Planner",
-        model: Any = None,
-        tool_registry: Any = None
-    ) -> None:
+    def __init__(self, name: str = "Planner", model: Any = None, tool_registry: Any = None) -> None:
         model = model or build_model()
         super().__init__(
             agent_name=name,
@@ -137,7 +133,9 @@ Rules:
 
         prompt = f"Instruction: {instruction}"
         if retry_feedback:
-            prompt += f"\n\nPrevious attempt #{retry_count} failed: {retry_feedback}\nAdjust the plan."  # noqa: E501
+            prompt += (
+                f"\n\nPrevious attempt #{retry_count} failed: {retry_feedback}\nAdjust the plan."  # noqa: E501
+            )
         prompt += "\n\nRespond with ONLY the JSON array:"
 
         for attempt in range(3):
@@ -177,14 +175,16 @@ Rules:
                 logger.warning("planner_model_error", attempt=attempt, error=str(exc))
                 await asyncio.sleep(1.5 * (attempt + 1))
 
-        fallback = [{
-            "id": "t1",
-            "description": instruction,
-            "tool": "execute_command",
-            "server": "bash",
-            "params": {"command": f"echo 'Task: {instruction}'"},
-            "depends_on": [],
-        }]
+        fallback = [
+            {
+                "id": "t1",
+                "description": instruction,
+                "tool": "execute_command",
+                "server": "bash",
+                "params": {"command": f"echo 'Task: {instruction}'"},
+                "depends_on": [],
+            }
+        ]
         logger.warning("planner_used_fallback", instruction=instruction[:60])
         return self._make_reply(
             content=json.dumps({"subtasks": fallback}),

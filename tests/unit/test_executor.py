@@ -1,4 +1,5 @@
 """Unit tests for ExecutorAgent and execute_dag."""
+
 from __future__ import annotations
 
 import asyncio
@@ -43,20 +44,25 @@ class TestExecutorAgent:
     @pytest.mark.asyncio
     async def test_single_subtask_with_tool(self) -> None:
         """Executor runs a single subtask via tool registry."""
+
         async def mock_tool(**params: Any) -> str:
             return "file created"
 
         registry = {"file_write": mock_tool}
         agent = ExecutorAgent(tool_registry=registry)
 
-        msg = _make_plan_msg([{
-            "id": "s1",
-            "action": "Create file",
-            "tool": "file_write",
-            "params": {"path": "test.txt"},
-            "expected_output": "file created",
-            "depends_on": [],
-        }])
+        msg = _make_plan_msg(
+            [
+                {
+                    "id": "s1",
+                    "action": "Create file",
+                    "tool": "file_write",
+                    "params": {"path": "test.txt"},
+                    "expected_output": "file created",
+                    "depends_on": [],
+                }
+            ]
+        )
 
         result = await agent.reply(msg)
         results = json.loads(result.content)
@@ -80,12 +86,12 @@ class TestExecutorAgent:
         registry = {"tool_a": tool_a, "tool_b": tool_b}
         agent = ExecutorAgent(tool_registry=registry)
 
-        msg = _make_plan_msg([
-            {"id": "s2", "action": "B", "tool": "tool_b",
-             "params": {}, "depends_on": ["s1"]},
-            {"id": "s1", "action": "A", "tool": "tool_a",
-             "params": {}, "depends_on": []},
-        ])
+        msg = _make_plan_msg(
+            [
+                {"id": "s2", "action": "B", "tool": "tool_b", "params": {}, "depends_on": ["s1"]},
+                {"id": "s1", "action": "A", "tool": "tool_a", "params": {}, "depends_on": []},
+            ]
+        )
 
         result = await agent.reply(msg)
         results = json.loads(result.content)
@@ -109,10 +115,17 @@ class TestExecutorAgent:
         registry = {"flaky": flaky_tool}
         agent = ExecutorAgent(tool_registry=registry, max_retries=3)
 
-        msg = _make_plan_msg([{
-            "id": "s1", "action": "Flaky op", "tool": "flaky",
-            "params": {}, "depends_on": [],
-        }])
+        msg = _make_plan_msg(
+            [
+                {
+                    "id": "s1",
+                    "action": "Flaky op",
+                    "tool": "flaky",
+                    "params": {},
+                    "depends_on": [],
+                }
+            ]
+        )
 
         result = await agent.reply(msg)
         results = json.loads(result.content)
@@ -124,11 +137,17 @@ class TestExecutorAgent:
         """Executor simulates unknown tools without model."""
         agent = ExecutorAgent()  # No model, no registry
 
-        msg = _make_plan_msg([{
-            "id": "s1", "action": "Do something",
-            "tool": "unknown_tool", "params": {},
-            "depends_on": [],
-        }])
+        msg = _make_plan_msg(
+            [
+                {
+                    "id": "s1",
+                    "action": "Do something",
+                    "tool": "unknown_tool",
+                    "params": {},
+                    "depends_on": [],
+                }
+            ]
+        )
 
         result = await agent.reply(msg)
         results = json.loads(result.content)
@@ -138,6 +157,7 @@ class TestExecutorAgent:
     @pytest.mark.asyncio
     async def test_critical_failure_stops_execution(self) -> None:
         """Critical subtask failure stops remaining execution."""
+
         async def fail_tool(**params: Any) -> str:
             msg = "critical error"
             raise RuntimeError(msg)
@@ -145,12 +165,19 @@ class TestExecutorAgent:
         registry = {"fail": fail_tool}
         agent = ExecutorAgent(tool_registry=registry, max_retries=0)
 
-        msg = _make_plan_msg([
-            {"id": "s1", "action": "Fail", "tool": "fail",
-             "params": {}, "depends_on": [], "is_critical": True},
-            {"id": "s2", "action": "Skip", "tool": "fail",
-             "params": {}, "depends_on": []},
-        ])
+        msg = _make_plan_msg(
+            [
+                {
+                    "id": "s1",
+                    "action": "Fail",
+                    "tool": "fail",
+                    "params": {},
+                    "depends_on": [],
+                    "is_critical": True,
+                },
+                {"id": "s2", "action": "Skip", "tool": "fail", "params": {}, "depends_on": []},
+            ]
+        )
 
         result = await agent.reply(msg)
         results = json.loads(result.content)
@@ -175,6 +202,7 @@ class TestExecutorAgent:
     @pytest.mark.asyncio
     async def test_execute_subtask_public_api(self) -> None:
         """execute_subtask is callable directly (for DAG dispatcher)."""
+
         async def mock_tool(**params: Any) -> str:
             return "direct call"
 
@@ -252,10 +280,8 @@ class TestExecuteDAG:
         executor = ExecutorAgent(tool_registry=registry)
 
         subtasks = [
-            {"id": "s1", "action": "A", "tool": "slow",
-             "params": {"id": "s1"}, "depends_on": []},
-            {"id": "s2", "action": "B", "tool": "slow",
-             "params": {"id": "s2"}, "depends_on": []},
+            {"id": "s1", "action": "A", "tool": "slow", "params": {"id": "s1"}, "depends_on": []},
+            {"id": "s2", "action": "B", "tool": "slow", "params": {"id": "s2"}, "depends_on": []},
         ]
 
         start = time.monotonic()
@@ -284,10 +310,14 @@ class TestExecuteDAG:
         executor = ExecutorAgent(tool_registry=registry)
 
         subtasks = [
-            {"id": "s2", "action": "B", "tool": "track",
-             "params": {"id": "s2"}, "depends_on": ["s1"]},
-            {"id": "s1", "action": "A", "tool": "track",
-             "params": {"id": "s1"}, "depends_on": []},
+            {
+                "id": "s2",
+                "action": "B",
+                "tool": "track",
+                "params": {"id": "s2"},
+                "depends_on": ["s1"],
+            },
+            {"id": "s1", "action": "A", "tool": "track", "params": {"id": "s1"}, "depends_on": []},
         ]
 
         results = await execute_dag(subtasks, executor, "t_dep")
@@ -298,6 +328,7 @@ class TestExecuteDAG:
     @pytest.mark.asyncio
     async def test_exception_handling(self) -> None:
         """Failed tasks produce error results, don't crash DAG."""
+
         async def fail_tool(**params: Any) -> str:
             raise RuntimeError("boom")
 
@@ -305,8 +336,7 @@ class TestExecuteDAG:
         executor = ExecutorAgent(tool_registry=registry, max_retries=0)
 
         subtasks = [
-            {"id": "s1", "action": "Fail", "tool": "fail",
-             "params": {}, "depends_on": []},
+            {"id": "s1", "action": "Fail", "tool": "fail", "params": {}, "depends_on": []},
         ]
 
         results = await execute_dag(subtasks, executor, "t_err")
@@ -328,14 +358,34 @@ class TestExecuteDAG:
         executor = ExecutorAgent(tool_registry=registry)
 
         subtasks = [
-            {"id": "s1", "action": "Start", "tool": "rec",
-             "params": {"id": "s1"}, "depends_on": []},
-            {"id": "s2", "action": "Left", "tool": "rec",
-             "params": {"id": "s2"}, "depends_on": ["s1"]},
-            {"id": "s3", "action": "Right", "tool": "rec",
-             "params": {"id": "s3"}, "depends_on": ["s1"]},
-            {"id": "s4", "action": "Join", "tool": "rec",
-             "params": {"id": "s4"}, "depends_on": ["s2", "s3"]},
+            {
+                "id": "s1",
+                "action": "Start",
+                "tool": "rec",
+                "params": {"id": "s1"},
+                "depends_on": [],
+            },
+            {
+                "id": "s2",
+                "action": "Left",
+                "tool": "rec",
+                "params": {"id": "s2"},
+                "depends_on": ["s1"],
+            },
+            {
+                "id": "s3",
+                "action": "Right",
+                "tool": "rec",
+                "params": {"id": "s3"},
+                "depends_on": ["s1"],
+            },
+            {
+                "id": "s4",
+                "action": "Join",
+                "tool": "rec",
+                "params": {"id": "s4"},
+                "depends_on": ["s2", "s3"],
+            },
         ]
 
         results = await execute_dag(subtasks, executor, "t_diamond")
@@ -352,10 +402,8 @@ class TestExecuteDAG:
         executor = ExecutorAgent()
 
         subtasks = [
-            {"id": "s1", "action": "A", "tool": "x",
-             "params": {}, "depends_on": ["s2"]},
-            {"id": "s2", "action": "B", "tool": "x",
-             "params": {}, "depends_on": ["s1"]},
+            {"id": "s1", "action": "A", "tool": "x", "params": {}, "depends_on": ["s2"]},
+            {"id": "s2", "action": "B", "tool": "x", "params": {}, "depends_on": ["s1"]},
         ]
 
         with pytest.raises(RuntimeError, match="unsatisfiable"):

@@ -1,6 +1,7 @@
 """Unit tests for Phase 5 — circuit breaker, SSE events, MCP retry,
 rollback, logging, and metrics.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -243,8 +244,12 @@ class TestMetrics:
     def test_record_llm_call_no_crash(self) -> None:
         # Should not crash even if prometheus_client unavailable
         record_llm_call(
-            provider="groq", model="llama3", status="success",
-            latency_seconds=1.5, input_tokens=100, output_tokens=50,
+            provider="groq",
+            model="llama3",
+            status="success",
+            latency_seconds=1.5,
+            input_tokens=100,
+            output_tokens=50,
         )
 
     def test_record_tool_call_no_crash(self) -> None:

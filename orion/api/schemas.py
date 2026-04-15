@@ -3,6 +3,7 @@
 All schemas use ``model_config = ConfigDict(frozen=True)``
 for immutability. Error responses follow RFC 7807.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -58,13 +59,9 @@ class TaskRequest(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    instruction: str = Field(
-        ..., min_length=1, max_length=5000
-    )
+    instruction: str = Field(..., min_length=1, max_length=5000)
     context: dict[str, Any] = Field(default_factory=dict)
-    timeout_seconds: int = Field(
-        default=300, ge=10, le=3600
-    )
+    timeout_seconds: int = Field(default=300, ge=10, le=3600)
     hitl_webhook_url: str | None = None
     safe_mode: bool = False
 
@@ -159,9 +156,7 @@ class ToolSchema(BaseModel):
     description: str = ""
     category: str = ""
     is_destructive: bool = False
-    params_schema: dict[str, Any] = Field(
-        default_factory=dict
-    )
+    params_schema: dict[str, Any] = Field(default_factory=dict)
 
 
 # ── Error Responses (RFC 7807) ───────────────────────────

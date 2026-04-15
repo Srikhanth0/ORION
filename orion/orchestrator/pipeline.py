@@ -17,6 +17,7 @@ Depends On
 - ``orion.agents`` (PlannerAgent, ExecutorAgent, VerifierAgent, SupervisorAgent)
 - ``orion.orchestrator.dispatcher`` (execute_dag)
 """
+
 from __future__ import annotations
 
 import json
@@ -173,12 +174,9 @@ class OrionPipeline:
 
             # Preserve topological order in output
             from orion.agents.executor import topological_sort
+
             ordered_ids = topological_sort(subtasks)
-            results_list = [
-                results_dict[sid]
-                for sid in ordered_ids
-                if sid in results_dict
-            ]
+            results_list = [results_dict[sid] for sid in ordered_ids if sid in results_dict]
 
         # Build executor output Msg
         meta = getattr(plan_msg, "metadata", {}) or {}

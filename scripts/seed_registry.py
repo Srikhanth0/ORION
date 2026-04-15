@@ -10,6 +10,7 @@ Usage:
     python scripts/seed_registry.py --export tools.json
     python scripts/seed_registry.py --help
 """
+
 from __future__ import annotations
 
 import argparse
@@ -77,10 +78,7 @@ async def discover_all(config_path: str) -> None:
 
         for tool in tools:
             destr = " [DESTRUCTIVE]" if tool.is_destructive else ""
-            print(
-                f"      • {tool.name} ({tool.category.value})"
-                f"{destr}"
-            )
+            print(f"      • {tool.name} ({tool.category.value}){destr}")
 
     print()
     print(f"  Total: {total} tools across {len(registry._servers)} servers")
@@ -100,6 +98,7 @@ def main() -> int:
 
     if args.list:
         import yaml
+
         path = Path(args.config)
         if not path.exists():
             print(f"  ✗ Config not found: {args.config}")
@@ -124,14 +123,16 @@ def main() -> int:
     if args.export and registry:
         export_data = []
         for tool in registry.list_tools():
-            export_data.append({
-                "name": tool.name,
-                "description": tool.description,
-                "category": tool.category.value,
-                "is_destructive": tool.is_destructive,
-                "params_schema": tool.params_schema,
-                "server_category": tool.server_category,
-            })
+            export_data.append(
+                {
+                    "name": tool.name,
+                    "description": tool.description,
+                    "category": tool.category.value,
+                    "is_destructive": tool.is_destructive,
+                    "params_schema": tool.params_schema,
+                    "server_category": tool.server_category,
+                }
+            )
 
         with open(args.export, "w") as f:
             json.dump(export_data, f, indent=2)

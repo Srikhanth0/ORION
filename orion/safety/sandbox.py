@@ -13,6 +13,7 @@ Depends On
 ----------
 - ``orion.core.exceptions`` (SandboxViolationError, ToolTimeoutError)
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -30,11 +31,20 @@ from orion.core.exceptions import (
 logger = structlog.get_logger(__name__)
 
 # Env vars to strip from subprocess environment
-_SENSITIVE_ENV_PREFIXES = frozenset({
-    "API_KEY", "SECRET", "TOKEN", "PASSWORD",
-    "GITHUB_PAT", "OPENAI", "GROQ", "OPENROUTER",
-    "AWS_SECRET", "GITHUB_TOKEN",
-})
+_SENSITIVE_ENV_PREFIXES = frozenset(
+    {
+        "API_KEY",
+        "SECRET",
+        "TOKEN",
+        "PASSWORD",
+        "GITHUB_PAT",
+        "OPENAI",
+        "GROQ",
+        "OPENROUTER",
+        "AWS_SECRET",
+        "GITHUB_TOKEN",
+    }
+)
 
 
 @dataclass
@@ -81,8 +91,11 @@ class ExecSandbox:
         max_file_size_mb: int = 100,
     ) -> None:
         self._allowed_paths = allowed_paths or [
-            "/home", "/tmp", "/workspace",
-            "C:\\Users", "C:\\temp",
+            "/home",
+            "/tmp",
+            "/workspace",
+            "C:\\Users",
+            "C:\\temp",
         ]
         self._default_timeout = default_timeout
         self._max_memory_mb = max_memory_mb
@@ -127,9 +140,7 @@ class ExecSandbox:
 
         try:
             result = await asyncio.wait_for(
-                self._spawn(
-                    command, env, effective_cwd
-                ),
+                self._spawn(command, env, effective_cwd),
                 timeout=effective_timeout,
             )
 
@@ -148,8 +159,7 @@ class ExecSandbox:
                 timeout=effective_timeout,
             )
             raise ToolTimeoutError(
-                f"Command timed out after "
-                f"{effective_timeout}s: {command[:50]}",
+                f"Command timed out after {effective_timeout}s: {command[:50]}",
                 tool_name="shell",
                 timeout_seconds=effective_timeout,
             ) from None
@@ -222,10 +232,7 @@ class ExecSandbox:
         clean: dict[str, str] = {}
         for key, val in os.environ.items():
             key_upper = key.upper()
-            is_sensitive = any(
-                prefix in key_upper
-                for prefix in _SENSITIVE_ENV_PREFIXES
-            )
+            is_sensitive = any(prefix in key_upper for prefix in _SENSITIVE_ENV_PREFIXES)
             if not is_sensitive:
                 clean[key] = val
         return clean

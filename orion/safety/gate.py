@@ -12,6 +12,7 @@ Depends On
 ----------
 - ``structlog`` (logging)
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -22,15 +23,26 @@ import structlog
 logger = structlog.get_logger(__name__)
 
 # Risk levels for destructive operations
-_HIGH_RISK_PATTERNS = frozenset({
-    "rm -rf", "drop", "delete_repo", "truncate",
-    "format", "destroy", "bulk_delete",
-})
+_HIGH_RISK_PATTERNS = frozenset(
+    {
+        "rm -rf",
+        "drop",
+        "delete_repo",
+        "truncate",
+        "format",
+        "destroy",
+        "bulk_delete",
+    }
+)
 
-_LOW_RISK_PATTERNS = frozenset({
-    "delete_file", "remove_temp", "clean_cache",
-    "unlink",
-})
+_LOW_RISK_PATTERNS = frozenset(
+    {
+        "delete_file",
+        "remove_temp",
+        "clean_cache",
+        "unlink",
+    }
+)
 
 
 @dataclass
@@ -100,7 +112,9 @@ class DestructiveOpGate:
                 risk=risk_level,
             )
             return await self._request_human_approval(
-                tool_name, params, risk_level,
+                tool_name,
+                params,
+                risk_level,
                 rollback_available,
             )
 
@@ -111,7 +125,9 @@ class DestructiveOpGate:
                 tool=tool_name,
             )
             return await self._request_human_approval(
-                tool_name, params, risk_level,
+                tool_name,
+                params,
+                risk_level,
                 rollback_available,
             )
 
@@ -123,10 +139,7 @@ class DestructiveOpGate:
         )
         return ApprovalResult(
             approved=True,
-            reason=(
-                f"Auto-approved low-risk destructive op: "
-                f"{tool_name}"
-            ),
+            reason=(f"Auto-approved low-risk destructive op: {tool_name}"),
             risk_level=risk_level,
             mode=self._mode,
         )
@@ -183,10 +196,7 @@ class DestructiveOpGate:
             if self._mode == "strict":
                 return ApprovalResult(
                     approved=False,
-                    reason=(
-                        "No HITL gateway configured for "
-                        "strict mode approval"
-                    ),
+                    reason=("No HITL gateway configured for strict mode approval"),
                     risk_level=risk_level,
                     mode=self._mode,
                 )

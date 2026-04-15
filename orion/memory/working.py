@@ -14,6 +14,7 @@ Depends On
 ----------
 - ``structlog`` (logging)
 """
+
 from __future__ import annotations
 
 import json
@@ -103,11 +104,7 @@ class WorkingMemory:
             output: Output string (truncated).
             success: Whether the step succeeded.
         """
-        content = (
-            f"[{subtask_id}] {tool}: "
-            f"{'OK' if success else 'FAIL'} — "
-            f"{output[:200]}"
-        )
+        content = f"[{subtask_id}] {tool}: {'OK' if success else 'FAIL'} — {output[:200]}"
         entry = MemoryEntry(
             role="step_result",
             content=content,
@@ -196,10 +193,7 @@ class WorkingMemory:
         evicted: list[MemoryEntry] = []
         target = int(self._max_tokens * 0.6)
 
-        while (
-            self._total_tokens > target
-            and len(self._entries) > 1
-        ):
+        while self._total_tokens > target and len(self._entries) > 1:
             removed = self._entries.pop(0)
             self._total_tokens -= removed.token_estimate
             evicted.append(removed)
@@ -222,9 +216,7 @@ class WorkingMemory:
                 tokens=self._total_tokens,
             )
 
-    def _summarise_evicted(
-        self, entries: list[MemoryEntry]
-    ) -> str:
+    def _summarise_evicted(self, entries: list[MemoryEntry]) -> str:
         """Summarise evicted entries.
 
         In production, calls LLM via summarizer. Falls back to
@@ -236,9 +228,7 @@ class WorkingMemory:
         Returns:
             Summary string.
         """
-        combined = " | ".join(
-            f"{e.role}: {e.content[:100]}" for e in entries
-        )
+        combined = " | ".join(f"{e.role}: {e.content[:100]}" for e in entries)
 
         # Truncate fallback summary
         if len(combined) > 500:

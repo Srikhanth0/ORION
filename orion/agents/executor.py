@@ -44,11 +44,18 @@ class ExecutorAgent(BaseOrionAgent):
         try:
             plan = json.loads(content)
         except json.JSONDecodeError as exc:
-            return self._make_reply(content=json.dumps([{
-                "ok": False,
-                "error": f"Failed to parse plan: {exc}",
-                "duration_ms": 0,
-            }]), source_msg=x)
+            return self._make_reply(
+                content=json.dumps(
+                    [
+                        {
+                            "ok": False,
+                            "error": f"Failed to parse plan: {exc}",
+                            "duration_ms": 0,
+                        }
+                    ]
+                ),
+                source_msg=x,
+            )
 
         subtasks = plan if isinstance(plan, list) else plan.get("subtasks", [])
 

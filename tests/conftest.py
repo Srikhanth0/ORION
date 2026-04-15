@@ -3,6 +3,7 @@
 Provides mock objects for the LLM router, tool registry, and
 reusable Task/Subtask/TaskDAG instances for unit tests.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -29,9 +30,7 @@ class MockLLMRouter:
         self.call_count = 0
         self.call_log: list[list[dict[str, Any]]] = []
 
-    async def chat(
-        self, messages: list[dict[str, Any]], **kwargs: Any
-    ) -> str:
+    async def chat(self, messages: list[dict[str, Any]], **kwargs: Any) -> str:
         """Return the next pre-baked response.
 
         Args:

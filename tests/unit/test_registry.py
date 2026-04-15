@@ -1,4 +1,5 @@
 """Unit tests for ToolRegistry."""
+
 from __future__ import annotations
 
 import pytest
@@ -98,9 +99,7 @@ class TestToolRegistry:
         """Keyword-based scoring returns relevant tools."""
         registry = ToolRegistry()
         registry.register(_make_tool("FILE_WRITE", "Write content to a file"))
-        registry.register(
-            _make_tool("GITHUB_CREATE_ISSUE", "Create a GitHub issue")
-        )
+        registry.register(_make_tool("GITHUB_CREATE_ISSUE", "Create a GitHub issue"))
 
         scored = registry.score("write a file", top_k=2)
         assert len(scored) > 0
@@ -116,11 +115,15 @@ class TestToolRegistry:
         """Tools with destructive keywords are flagged."""
         registry = ToolRegistry()
         tool = registry._wrap_tool(
-            type("T", (), {
-                "name": "GITHUB_DELETE_REPO",
-                "description": "Delete a repo",
-                "parameters": {},
-            })()
+            type(
+                "T",
+                (),
+                {
+                    "name": "GITHUB_DELETE_REPO",
+                    "description": "Delete a repo",
+                    "parameters": {},
+                },
+            )()
         )
         assert tool.is_destructive is True
 

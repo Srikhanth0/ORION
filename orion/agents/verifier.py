@@ -14,6 +14,7 @@ Depends On
 ----------
 - ``orion.agents.base`` (BaseOrionAgent)
 """
+
 from __future__ import annotations
 
 import json
@@ -106,9 +107,7 @@ class VerifierAgent(BaseOrionAgent):
             meta_updates={"step_index": 3},
         )
 
-    def _run_assertions(
-        self, step_results: list[dict[str, Any]]
-    ) -> list[dict[str, Any]]:
+    def _run_assertions(self, step_results: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Run deterministic assertions on each step result.
 
         Args:
@@ -132,29 +131,33 @@ class VerifierAgent(BaseOrionAgent):
             }
 
             if not ok:
-                assertion["checks"].append({
-                    "type": "execution_status",
-                    "passed": False,
-                    "detail": f"Subtask failed: {result.get('error', 'unknown')}",
-                })
+                assertion["checks"].append(
+                    {
+                        "type": "execution_status",
+                        "passed": False,
+                        "detail": f"Subtask failed: {result.get('error', 'unknown')}",
+                    }
+                )
             else:
                 # String containment check
                 if expected and output:
                     contains = expected.lower() in str(output).lower()
-                    assertion["checks"].append({
-                        "type": "string_contains",
-                        "passed": contains,
-                        "detail": (
-                            f"Expected output to contain '{expected[:50]}'"
-                        ),
-                    })
+                    assertion["checks"].append(
+                        {
+                            "type": "string_contains",
+                            "passed": contains,
+                            "detail": (f"Expected output to contain '{expected[:50]}'"),
+                        }
+                    )
 
                 # Non-empty output check
-                assertion["checks"].append({
-                    "type": "non_empty_output",
-                    "passed": bool(output and str(output).strip()),
-                    "detail": "Output should not be empty",
-                })
+                assertion["checks"].append(
+                    {
+                        "type": "non_empty_output",
+                        "passed": bool(output and str(output).strip()),
+                        "detail": "Output should not be empty",
+                    }
+                )
 
             assertions.append(assertion)
 
@@ -222,9 +225,7 @@ class VerifierAgent(BaseOrionAgent):
             )
             return self._report_from_assertions(assertion_results)
 
-    def _report_from_assertions(
-        self, assertion_results: list[dict[str, Any]]
-    ) -> dict[str, Any]:
+    def _report_from_assertions(self, assertion_results: list[dict[str, Any]]) -> dict[str, Any]:
         """Generate a report purely from deterministic assertions.
 
         Args:
@@ -243,11 +244,13 @@ class VerifierAgent(BaseOrionAgent):
                     all_passed = False
                     if check.get("type") == "execution_status":
                         has_failures = True
-                    issues.append({
-                        "subtask_id": ar["subtask_id"],
-                        "check_type": check["type"],
-                        "detail": check.get("detail", ""),
-                    })
+                    issues.append(
+                        {
+                            "subtask_id": ar["subtask_id"],
+                            "check_type": check["type"],
+                            "detail": check.get("detail", ""),
+                        }
+                    )
 
         if all_passed:
             overall = "PASS"

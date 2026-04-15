@@ -13,6 +13,7 @@ Depends On
 - ``langsmith`` (Client, traceable) — optional.
 - ``structlog`` (logging)
 """
+
 from __future__ import annotations
 
 import os
@@ -72,9 +73,7 @@ class Tracer:
         self._project = project_name
         self._client: Any = None
         self._active_spans: dict[str, TraceSpan] = {}
-        self._enabled = bool(
-            os.environ.get("LANGSMITH_API_KEY")
-        )
+        self._enabled = bool(os.environ.get("LANGSMITH_API_KEY"))
 
         if self._enabled:
             try:

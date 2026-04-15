@@ -1,4 +1,5 @@
 """Unit tests for SupervisorAgent."""
+
 from __future__ import annotations
 
 import json
@@ -59,9 +60,7 @@ class TestSupervisorAgent:
     async def test_soft_fail_retries(self) -> None:
         """SOFT_FAIL with retries left → RETRY decision."""
         agent = SupervisorAgent()
-        result = await agent.reply(
-            _make_report_msg("SOFT_FAIL", "RETRY_STEP", retry_count=0)
-        )
+        result = await agent.reply(_make_report_msg("SOFT_FAIL", "RETRY_STEP", retry_count=0))
 
         decision = json.loads(result.content)
         assert decision["decision"]["action"] == "RETRY"
@@ -70,9 +69,7 @@ class TestSupervisorAgent:
     async def test_soft_fail_max_retries_escalates(self) -> None:
         """SOFT_FAIL at max retries → ESCALATE."""
         agent = SupervisorAgent(max_auto_retries=3)
-        result = await agent.reply(
-            _make_report_msg("SOFT_FAIL", "RETRY_STEP", retry_count=3)
-        )
+        result = await agent.reply(_make_report_msg("SOFT_FAIL", "RETRY_STEP", retry_count=3))
 
         decision = json.loads(result.content)
         assert decision["decision"]["action"] == "ESCALATE"
@@ -83,7 +80,8 @@ class TestSupervisorAgent:
         agent = SupervisorAgent()
         result = await agent.reply(
             _make_report_msg(
-                "HARD_FAIL", "ROLLBACK",
+                "HARD_FAIL",
+                "ROLLBACK",
                 rollback_available=True,
             )
         )
@@ -97,7 +95,8 @@ class TestSupervisorAgent:
         agent = SupervisorAgent()
         result = await agent.reply(
             _make_report_msg(
-                "HARD_FAIL", "ROLLBACK",
+                "HARD_FAIL",
+                "ROLLBACK",
                 rollback_available=False,
             )
         )
@@ -109,9 +108,7 @@ class TestSupervisorAgent:
     async def test_unknown_status_escalates(self) -> None:
         """Unknown verification status → ESCALATE."""
         agent = SupervisorAgent()
-        result = await agent.reply(
-            _make_report_msg("UNKNOWN_STATUS", "UNKNOWN")
-        )
+        result = await agent.reply(_make_report_msg("UNKNOWN_STATUS", "UNKNOWN"))
 
         decision = json.loads(result.content)
         assert decision["decision"]["action"] == "ESCALATE"
@@ -120,9 +117,7 @@ class TestSupervisorAgent:
     async def test_orion_meta_propagated(self) -> None:
         """orion_meta propagated to output."""
         agent = SupervisorAgent()
-        result = await agent.reply(
-            _make_report_msg(task_id="t_sup")
-        )
+        result = await agent.reply(_make_report_msg(task_id="t_sup"))
 
         meta = result.metadata.get("orion_meta", {})
         assert meta["task_id"] == "t_sup"
@@ -135,7 +130,8 @@ class TestSupervisorAgent:
         agent = SupervisorAgent()
         result = await agent.reply(
             _make_report_msg(
-                "HARD_FAIL", "ESCALATE",
+                "HARD_FAIL",
+                "ESCALATE",
                 issues=issues,
             )
         )

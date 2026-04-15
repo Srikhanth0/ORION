@@ -30,6 +30,7 @@ Must NOT Know About
 -------------------
 - Any ORION module. These are pure value types.
 """
+
 from __future__ import annotations
 
 
@@ -81,9 +82,7 @@ class TaskValidationError(OrionError):
         context: dict[str, object] | None = None,
         cycle_path: list[str] | None = None,
     ) -> None:
-        super().__init__(
-            message, task_id=task_id, subtask_id=subtask_id, context=context
-        )
+        super().__init__(message, task_id=task_id, subtask_id=subtask_id, context=context)
         self.cycle_path = cycle_path
 
 
@@ -107,9 +106,7 @@ class PlanError(OrionError):
         context: dict[str, object] | None = None,
         raw_output: str | None = None,
     ) -> None:
-        super().__init__(
-            message, task_id=task_id, subtask_id=subtask_id, context=context
-        )
+        super().__init__(message, task_id=task_id, subtask_id=subtask_id, context=context)
         self.raw_output = raw_output
 
 
@@ -133,9 +130,7 @@ class ToolError(OrionError):
         context: dict[str, object] | None = None,
         tool_name: str | None = None,
     ) -> None:
-        super().__init__(
-            message, task_id=task_id, subtask_id=subtask_id, context=context
-        )
+        super().__init__(message, task_id=task_id, subtask_id=subtask_id, context=context)
         self.tool_name = tool_name
 
 
@@ -220,9 +215,7 @@ class SafetyError(OrionError):
         context: dict[str, object] | None = None,
         rule: str | None = None,
     ) -> None:
-        super().__init__(
-            message, task_id=task_id, subtask_id=subtask_id, context=context
-        )
+        super().__init__(message, task_id=task_id, subtask_id=subtask_id, context=context)
         self.rule = rule
 
 
@@ -311,9 +304,7 @@ class LLMError(OrionError):
         context: dict[str, object] | None = None,
         provider: str | None = None,
     ) -> None:
-        super().__init__(
-            message, task_id=task_id, subtask_id=subtask_id, context=context
-        )
+        super().__init__(message, task_id=task_id, subtask_id=subtask_id, context=context)
         self.provider = provider
 
 
@@ -403,7 +394,5 @@ class RollbackError(OrionError):
         context: dict[str, object] | None = None,
         checkpoint_path: str | None = None,
     ) -> None:
-        super().__init__(
-            message, task_id=task_id, subtask_id=subtask_id, context=context
-        )
+        super().__init__(message, task_id=task_id, subtask_id=subtask_id, context=context)
         self.checkpoint_path = checkpoint_path

@@ -3,6 +3,7 @@
 Uses fixtures and mocks, no live MCP server processes. Tests the full
 invocation pipeline: registry → MCPClient → safety checks → result parsing.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -37,32 +38,40 @@ def _reset_registry() -> None:
 def registry() -> ToolRegistry:
     """Create a registry with test tools."""
     reg = ToolRegistry()
-    reg.register(MCPToolWrapper(
-        name="GITHUB_CREATE_ISSUE",
-        description="Create a GitHub issue",
-        category=ToolCategory.GITHUB,
-        server_category="github_tools",
-    ))
-    reg.register(MCPToolWrapper(
-        name="FILE_WRITE",
-        description="Write content to a file",
-        category=ToolCategory.OS,
-        is_destructive=True,
-        server_category="os_tools",
-    ))
-    reg.register(MCPToolWrapper(
-        name="SHELL_EXEC_CMD",
-        description="Execute a shell command",
-        category=ToolCategory.OS,
-        is_destructive=True,
-        server_category="os_tools",
-    ))
-    reg.register(MCPToolWrapper(
-        name="BROWSER_NAVIGATE_URL",
-        description="Navigate to a URL",
-        category=ToolCategory.BROWSER,
-        server_category="browser_tools",
-    ))
+    reg.register(
+        MCPToolWrapper(
+            name="GITHUB_CREATE_ISSUE",
+            description="Create a GitHub issue",
+            category=ToolCategory.GITHUB,
+            server_category="github_tools",
+        )
+    )
+    reg.register(
+        MCPToolWrapper(
+            name="FILE_WRITE",
+            description="Write content to a file",
+            category=ToolCategory.OS,
+            is_destructive=True,
+            server_category="os_tools",
+        )
+    )
+    reg.register(
+        MCPToolWrapper(
+            name="SHELL_EXEC_CMD",
+            description="Execute a shell command",
+            category=ToolCategory.OS,
+            is_destructive=True,
+            server_category="os_tools",
+        )
+    )
+    reg.register(
+        MCPToolWrapper(
+            name="BROWSER_NAVIGATE_URL",
+            description="Navigate to a URL",
+            category=ToolCategory.BROWSER,
+            server_category="browser_tools",
+        )
+    )
 
     # Map tools to mock servers
     for tool in reg.list_tools():
@@ -109,15 +118,14 @@ class TestMCPIntegration:
     """Integration tests for the MCPClient pipeline."""
 
     @pytest.mark.asyncio
-    async def test_invoke_registered_tool(
-        self, registry: ToolRegistry
-    ) -> None:
+    async def test_invoke_registered_tool(self, registry: ToolRegistry) -> None:
         """Successfully invoke a registered tool (mocked MCP)."""
         mock_session = AsyncMock()
         mock_session.call_tool.return_value = _make_mock_call_result()
 
         # Wire mock session to the server entry
         from orion.tools.registry import MCPServerEntry
+
         registry._servers["github_tools"] = MCPServerEntry(
             category="github_tools",
             command="mock",
@@ -135,14 +143,13 @@ class TestMCPIntegration:
         assert "simulated result" in result.output
 
     @pytest.mark.asyncio
-    async def test_invoke_unregistered_tool_raises(
-        self, registry: ToolRegistry
-    ) -> None:
+    async def test_invoke_unregistered_tool_raises(self, registry: ToolRegistry) -> None:
         """Invoking unregistered tool raises ToolNotFoundError."""
         client = MCPClient(registry=registry)
         with pytest.raises(ToolNotFoundError):
             await client.invoke(
-                "NONEXISTENT_TOOL", {},
+                "NONEXISTENT_TOOL",
+                {},
                 task_id="t_int2",
             )
 
@@ -153,12 +160,14 @@ class TestMCPIntegration:
         manifest: PermissionManifest,
     ) -> None:
         """Permission-denied tool raises PermissionDeniedError."""
-        registry.register(MCPToolWrapper(
-            name="GITHUB_DELETE_REPO",
-            description="Delete a repo",
-            category=ToolCategory.GITHUB,
-            is_destructive=True,
-        ))
+        registry.register(
+            MCPToolWrapper(
+                name="GITHUB_DELETE_REPO",
+                description="Delete a repo",
+                category=ToolCategory.GITHUB,
+                is_destructive=True,
+            )
+        )
 
         client = MCPClient(
             registry=registry,
@@ -172,9 +181,7 @@ class TestMCPIntegration:
             )
 
     @pytest.mark.asyncio
-    async def test_destructive_gate_blocks(
-        self, registry: ToolRegistry
-    ) -> None:
+    async def test_destructive_gate_blocks(self, registry: ToolRegistry) -> None:
         """Destructive op gate blocks in strict mode."""
         gate = DestructiveOpGate(mode="strict")
         client = MCPClient(
@@ -199,15 +206,14 @@ class TestMCPIntegration:
         mock_session.call_tool.return_value = _make_mock_call_result()
 
         from orion.tools.registry import MCPServerEntry
+
         registry._servers["github_tools"] = MCPServerEntry(
             category="github_tools",
             command="mock",
         )
         registry._servers["github_tools"]._session = mock_session
 
-        rollback = RollbackEngine(
-            checkpoint_dir=tmp_path / "cp"
-        )
+        rollback = RollbackEngine(checkpoint_dir=tmp_path / "cp")
         client = MCPClient(
             registry=registry,
             rollback_engine=rollback,
@@ -223,22 +229,22 @@ class TestMCPIntegration:
         assert rollback.has_checkpoints("t_int5") is False
 
     @pytest.mark.asyncio
-    async def test_schema_validation_failure(
-        self, registry: ToolRegistry
-    ) -> None:
+    async def test_schema_validation_failure(self, registry: ToolRegistry) -> None:
         """Invalid params against schema raises ToolError."""
-        registry.register(MCPToolWrapper(
-            name="STRICT_TOOL",
-            description="Tool with schema",
-            category=ToolCategory.SYSTEM,
-            params_schema={
-                "type": "object",
-                "properties": {
-                    "name": {"type": "string"},
+        registry.register(
+            MCPToolWrapper(
+                name="STRICT_TOOL",
+                description="Tool with schema",
+                category=ToolCategory.SYSTEM,
+                params_schema={
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                    },
+                    "required": ["name"],
                 },
-                "required": ["name"],
-            },
-        ))
+            )
+        )
 
         client = MCPClient(registry=registry)
         with pytest.raises(ToolError, match="validation"):
@@ -252,22 +258,16 @@ class TestMCPIntegration:
 class TestToolSelectorIntegration:
     """Integration tests for ToolSelector."""
 
-    def test_suggest_returns_ranked(
-        self, registry: ToolRegistry
-    ) -> None:
+    def test_suggest_returns_ranked(self, registry: ToolRegistry) -> None:
         """ToolSelector returns ranked suggestions."""
         selector = ToolSelector(registry=registry)
-        suggestions = selector.suggest(
-            "create a github issue"
-        )
+        suggestions = selector.suggest("create a github issue")
 
         assert len(suggestions) > 0
         names = [s.name for s in suggestions]
         assert "GITHUB_CREATE_ISSUE" in names
 
-    def test_format_for_prompt(
-        self, registry: ToolRegistry
-    ) -> None:
+    def test_format_for_prompt(self, registry: ToolRegistry) -> None:
         """format_for_prompt produces readable output."""
         selector = ToolSelector(registry=registry)
         text = selector.format_for_prompt("navigate browser")
@@ -328,6 +328,7 @@ servers:
     def test_env_var_resolution(self, tmp_path: Path) -> None:
         """Environment variable references are resolved."""
         import os
+
         os.environ["TEST_MCP_TOKEN"] = "secret123"
 
         config = tmp_path / "servers.yaml"

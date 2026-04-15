@@ -20,6 +20,7 @@ Depends On
 - ``pyautogui`` (mouse/keyboard control)
 - ``PIL`` (screenshot capture)
 """
+
 from __future__ import annotations
 
 import base64
@@ -288,9 +289,7 @@ VISION_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     {
         "name": "press_key",
-        "description": (
-            "Press a keyboard key or combination (e.g. 'enter', 'ctrl+c', 'alt+f4')"
-        ),
+        "description": ("Press a keyboard key or combination (e.g. 'enter', 'ctrl+c', 'alt+f4')"),
         "fn": press_key,
         "is_destructive": True,
         "params_schema": {

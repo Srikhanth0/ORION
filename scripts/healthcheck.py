@@ -10,6 +10,7 @@ Checks:
 Usage:
     python scripts/healthcheck.py [--url http://localhost:8080]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -17,9 +18,7 @@ import sys
 import urllib.request
 
 
-def check_endpoint(
-    url: str, name: str, timeout: float = 5.0
-) -> bool:
+def check_endpoint(url: str, name: str, timeout: float = 5.0) -> bool:
     """Check if an HTTP endpoint returns 200.
 
     Args:
@@ -66,9 +65,7 @@ def main() -> int:
     Returns:
         0 if all checks pass, 1 otherwise.
     """
-    parser = argparse.ArgumentParser(
-        description="ORION system health check"
-    )
+    parser = argparse.ArgumentParser(description="ORION system health check")
     parser.add_argument(
         "--url",
         default="http://localhost:8080",
@@ -83,14 +80,10 @@ def main() -> int:
     results = []
 
     # 1. API liveness
-    results.append(
-        check_endpoint(f"{base}/health", "API Health")
-    )
+    results.append(check_endpoint(f"{base}/health", "API Health"))
 
     # 2. API readiness
-    results.append(
-        check_endpoint(f"{base}/ready", "API Ready")
-    )
+    results.append(check_endpoint(f"{base}/ready", "API Ready"))
 
     # 3. Metrics endpoint
     results.append(
@@ -113,4 +106,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-

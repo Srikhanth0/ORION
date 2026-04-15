@@ -13,6 +13,7 @@ Depends On
 - ``chromadb`` (PersistentClient)
 - ``orion.memory.embedder`` (Embedder)
 """
+
 from __future__ import annotations
 
 import json
@@ -50,9 +51,7 @@ class PastTask:
     """
 
     task_description: str
-    execution_plan: dict[str, Any] = field(
-        default_factory=dict
-    )
+    execution_plan: dict[str, Any] = field(default_factory=dict)
     step_results_summary: str = ""
     success: bool = True
     duration_seconds: float = 0.0
@@ -100,9 +99,7 @@ class LocalLongTermMemory:
         try:
             import chromadb
 
-            self._client = chromadb.PersistentClient(
-                path=self._persist_path
-            )
+            self._client = chromadb.PersistentClient(path=self._persist_path)
             self._ensure_collections()
             logger.info(
                 "chromadb_connected",
@@ -172,12 +169,8 @@ class LocalLongTermMemory:
             "success": success,
             "duration_seconds": duration_seconds,
             "tools_used": json.dumps(tools_used or []),
-            "timestamp": datetime.now(
-                tz=UTC
-            ).isoformat(),
-            "agent_versions": json.dumps(
-                agent_versions or {}
-            ),
+            "timestamp": datetime.now(tz=UTC).isoformat(),
+            "agent_versions": json.dumps(agent_versions or {}),
         }
 
         client = self._get_client()
@@ -187,22 +180,21 @@ class LocalLongTermMemory:
                 reason="no_chromadb_connection",
             )
             # ORION-FIX: Graceful degradation when memory vector DB is unavailable
-            self._fallback.setdefault('fallback_key', []).append(PastTask(
-                task_description=task_description,
-                execution_plan=execution_plan,
-                step_results_summary=step_results_summary,
-                success=success,
-                duration_seconds=duration_seconds,
-                tools_used=tools_used or [],
-                doc_id=doc_id,
-            ))
+            self._fallback.setdefault("fallback_key", []).append(
+                PastTask(
+                    task_description=task_description,
+                    execution_plan=execution_plan,
+                    step_results_summary=step_results_summary,
+                    success=success,
+                    duration_seconds=duration_seconds,
+                    tools_used=tools_used or [],
+                    doc_id=doc_id,
+                )
+            )
             return doc_id
 
         try:
-            target = (
-                self._collection if success
-                else self._failure_collection
-            )
+            target = self._collection if success else self._failure_collection
 
             target.upsert(
                 ids=[doc_id],
@@ -275,9 +267,7 @@ class LocalLongTermMemory:
                 if score < score_threshold:
                     continue
 
-                plan_str = metadata.get(
-                    "execution_plan", "{}"
-                )
+                plan_str = metadata.get("execution_plan", "{}")
                 try:
                     plan = json.loads(plan_str)
                 except (json.JSONDecodeError, TypeError):
@@ -291,21 +281,13 @@ class LocalLongTermMemory:
 
                 past_tasks.append(
                     PastTask(
-                        task_description=metadata.get(
-                            "task_description", ""
-                        ),
+                        task_description=metadata.get("task_description", ""),
                         execution_plan=plan,
-                        step_results_summary=metadata.get(
-                            "step_results_summary", ""
-                        ),
+                        step_results_summary=metadata.get("step_results_summary", ""),
                         success=metadata.get("success", True),
-                        duration_seconds=metadata.get(
-                            "duration_seconds", 0.0
-                        ),
+                        duration_seconds=metadata.get("duration_seconds", 0.0),
                         tools_used=tools,
-                        timestamp=metadata.get(
-                            "timestamp", ""
-                        ),
+                        timestamp=metadata.get("timestamp", ""),
                         score=score,
                         doc_id=str(doc_id),
                     )
@@ -328,9 +310,7 @@ class LocalLongTermMemory:
 
         try:
             client.delete_collection(self._collection_name)
-            client.delete_collection(
-                self._failure_collection_name
-            )
+            client.delete_collection(self._failure_collection_name)
             self._collection = None
             self._failure_collection = None
             self._ensure_collections()

@@ -1,4 +1,5 @@
 """Tool routes — GET /v1/tools, GET /v1/tools/{name}."""
+
 from __future__ import annotations
 
 import structlog
@@ -32,9 +33,7 @@ async def list_tools() -> list[ToolSchema]:
     ]
 
 
-@router.get(
-    "/{tool_name}", response_model=ToolSchema
-)
+@router.get("/{tool_name}", response_model=ToolSchema)
 async def get_tool(tool_name: str) -> ToolSchema:
     """Get a single tool schema by name."""
     try:

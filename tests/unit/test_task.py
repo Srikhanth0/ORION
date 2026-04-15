@@ -8,6 +8,7 @@ Tests cover:
 - TaskDAG duplicate ID detection
 - Task creation and status lifecycle
 """
+
 from __future__ import annotations
 
 import pytest
@@ -210,8 +211,13 @@ class TestTask:
     def test_task_status_enum_values(self) -> None:
         """All expected TaskStatus values exist."""
         expected = {
-            "pending", "planning", "executing", "verifying",
-            "completed", "failed", "rolled_back",
+            "pending",
+            "planning",
+            "executing",
+            "verifying",
+            "completed",
+            "failed",
+            "rolled_back",
         }
         actual = {s.value for s in TaskStatus}
         assert actual == expected

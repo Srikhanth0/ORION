@@ -14,6 +14,7 @@ Depends On
 ----------
 - ``structlog``
 """
+
 from __future__ import annotations
 
 import logging
@@ -58,9 +59,7 @@ class SensitiveFilter:
         """
         for key, value in event_dict.items():
             if isinstance(value, str):
-                event_dict[key] = _SECRET_PATTERNS.sub(
-                    r"\1: [REDACTED]", value
-                )
+                event_dict[key] = _SECRET_PATTERNS.sub(r"\1: [REDACTED]", value)
         return event_dict
 
 
@@ -133,18 +132,13 @@ def configure_logging(
         level: Log level string.
         force_json: Force JSON output regardless of env.
     """
-    is_prod = (
-        force_json
-        or os.environ.get("ORION_ENV") == "production"
-    )
+    is_prod = force_json or os.environ.get("ORION_ENV") == "production"
 
     shared_processors: list = [
         structlog.contextvars.merge_contextvars,
         structlog.stdlib.add_log_level,
         structlog.stdlib.add_logger_name,
-        structlog.processors.TimeStamper(
-            fmt="iso", utc=True
-        ),
+        structlog.processors.TimeStamper(fmt="iso", utc=True),
         TaskContextFilter(),
         SensitiveFilter(),
         structlog.stdlib.ProcessorFormatter.wrap_for_formatter,

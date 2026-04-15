@@ -7,6 +7,7 @@ Tests cover:
 - Frozen model immutability
 - Serialization round-trip (model_dump / model_validate)
 """
+
 from __future__ import annotations
 
 from datetime import UTC
@@ -21,9 +22,7 @@ from orion.core.task import TaskStatus
 class TestStepResult:
     """Tests for the StepResult frozen model."""
 
-    def test_step_result_success(
-        self, sample_step_result_success: StepResult
-    ) -> None:
+    def test_step_result_success(self, sample_step_result_success: StepResult) -> None:
         """Successful StepResult has ok=True and output set."""
         r = sample_step_result_success
         assert r.ok is True
@@ -34,9 +33,7 @@ class TestStepResult:
         assert r.attempt == 1
         assert isinstance(r.output, dict)
 
-    def test_step_result_failure(
-        self, sample_step_result_failure: StepResult
-    ) -> None:
+    def test_step_result_failure(self, sample_step_result_failure: StepResult) -> None:
         """Failed StepResult has ok=False and error message."""
         r = sample_step_result_failure
         assert r.ok is False
@@ -78,9 +75,7 @@ class TestStepResult:
 class TestRollbackPoint:
     """Tests for the RollbackPoint frozen model."""
 
-    def test_rollback_point_creation(
-        self, sample_rollback_point: RollbackPoint
-    ) -> None:
+    def test_rollback_point_creation(self, sample_rollback_point: RollbackPoint) -> None:
         """RollbackPoint stores checkpoint data correctly."""
         rp = sample_rollback_point
         assert rp.subtask_id == "s1"
@@ -116,9 +111,7 @@ class TestRollbackPoint:
 class TestTaskResult:
     """Tests for the TaskResult aggregate model."""
 
-    def test_task_result_aggregation(
-        self, sample_task_result: TaskResult
-    ) -> None:
+    def test_task_result_aggregation(self, sample_task_result: TaskResult) -> None:
         """TaskResult aggregates multiple StepResults."""
         tr = sample_task_result
         assert tr.task_id == "t_test001"
@@ -137,9 +130,7 @@ class TestTaskResult:
         assert tr.total_duration_ms == 0
         assert tr.total_cost_usd == 0.0
 
-    def test_task_result_with_rollback_points(
-        self, sample_rollback_point: RollbackPoint
-    ) -> None:
+    def test_task_result_with_rollback_points(self, sample_rollback_point: RollbackPoint) -> None:
         """TaskResult stores rollback points for the Supervisor."""
         tr = TaskResult(
             task_id="t_rb",

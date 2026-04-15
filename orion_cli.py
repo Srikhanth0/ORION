@@ -253,8 +253,18 @@ def ensure_server_running(api_base: str) -> None:
         stderr=subprocess.DEVNULL,
         creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == "win32" else 0
     )
-    time.sleep(4)
-    console.print("  [green]✓ API server started.[/]")
+    
+    with console.status("  [yellow]Waiting for API server to start...[/]"):
+        for _ in range(30):
+            try:
+                with httpx.Client(timeout=1.0) as client:
+                    client.get(f"{api_base}/docs")
+                console.print("  [green]✓ API server started.[/]")
+                return
+            except httpx.RequestError:
+                time.sleep(1)
+        
+    console.print("  [red]✗[/] API server failed to start within 30 seconds.")
 
 
 def main() -> None:

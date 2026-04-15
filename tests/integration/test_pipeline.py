@@ -28,13 +28,14 @@ BASE_URL = "http://localhost:8080"
 
 # ── Event model ───────────────────────────────────────────────────────────────
 
+
 @dataclass
 class TaskEvent:
-    event_type: str          # "thought" | "tool_call" | "tool_result" | "status"
-    agent: str               # "planner" | "executor" | "verifier" | "supervisor"
+    event_type: str  # "thought" | "tool_call" | "tool_result" | "status"
+    agent: str  # "planner" | "executor" | "verifier" | "supervisor"
     content: str
     subtask_id: str | None = None
-    timestamp: str | None   = None
+    timestamp: str | None = None
 
     @classmethod
     def from_sse_line(cls, line: str) -> TaskEvent | None:
@@ -43,17 +44,18 @@ class TaskEvent:
         try:
             data = json.loads(line[5:].strip())
             return cls(
-                event_type = data.get("type", "unknown"),
-                agent      = data.get("agent", "unknown"),
-                content    = data.get("content", ""),
-                subtask_id = data.get("subtask_id"),
-                timestamp  = data.get("ts"),
+                event_type=data.get("type", "unknown"),
+                agent=data.get("agent", "unknown"),
+                content=data.get("content", ""),
+                subtask_id=data.get("subtask_id"),
+                timestamp=data.get("ts"),
             )
         except json.JSONDecodeError:
             return None
 
 
 # ── SSE consumer ─────────────────────────────────────────────────────────────
+
 
 async def stream_task_events(
     task_id: str,
@@ -70,11 +72,14 @@ async def stream_task_events(
     terminal_statuses = {"completed", "failed", "cancelled"}
 
     try:
-        async with httpx.AsyncClient(timeout=timeout_seconds) as client, client.stream(
-            "GET",
-            f"{BASE_URL}/v1/tasks/{task_id}/stream",
-            headers={"Accept": "text/event-stream"},
-        ) as response:
+        async with (
+            httpx.AsyncClient(timeout=timeout_seconds) as client,
+            client.stream(
+                "GET",
+                f"{BASE_URL}/v1/tasks/{task_id}/stream",
+                headers={"Accept": "text/event-stream"},
+            ) as response,
+        ):
             response.raise_for_status()
 
             async for line in response.aiter_lines():
@@ -87,9 +92,13 @@ async def stream_task_events(
                     continue
 
                 events.append(event)
-                log.debug("[%s/%s] %s: %s",
-                          event.agent, event.subtask_id,
-                          event.event_type, event.content[:80])
+                log.debug(
+                    "[%s/%s] %s: %s",
+                    event.agent,
+                    event.subtask_id,
+                    event.event_type,
+                    event.content[:80],
+                )
 
                 # Stop consuming when we hit a terminal event
                 if event.event_type == "status" and event.content in terminal_statuses:
@@ -98,9 +107,9 @@ async def stream_task_events(
 
     except httpx.ReadTimeout:
         log.error(
-            "SSE stream timed out after %ds for task %s.\n"
-            "Last captured events:\n%s",
-            timeout_seconds, task_id,
+            "SSE stream timed out after %ds for task %s.\nLast captured events:\n%s",
+            timeout_seconds,
+            task_id,
             "\n".join(f"  [{e.agent}] {e.event_type}: {e.content[:60]}" for e in events[-5:]),
         )
         # Return what we have — the caller can inspect which step stalled
@@ -127,6 +136,7 @@ def get_last_agent(events: list[TaskEvent]) -> str:
 
 # ── Test helpers ──────────────────────────────────────────────────────────────
 
+
 async def submit_task(instruction: str) -> str:
     """Submit a task and return the task_id."""
     async with httpx.AsyncClient(timeout=10) as client:
@@ -139,6 +149,7 @@ async def submit_task(instruction: str) -> str:
 
 
 # ── Integration tests ─────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_task1_shell():
@@ -192,7 +203,9 @@ async def test_task3_gui_vision():
     final = get_final_status(events)
     if final == "failed":
         # Check if it failed on the vision tool specifically (ngrok not up) vs something else
-        vision_errors = [e for e in events if "vision" in e.content.lower() or "ngrok" in e.content.lower()]  # noqa: E501
+        vision_errors = [
+            e for e in events if "vision" in e.content.lower() or "ngrok" in e.content.lower()
+        ]  # noqa: E501
         if vision_errors:
             pytest.skip("Task 3 skipped — Vision API tunnel (ngrok) not reachable on this host")
         pytest.fail(f"Task 3 failed for non-vision reason: {get_last_agent(events)!r}")

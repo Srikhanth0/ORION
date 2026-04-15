@@ -18,6 +18,7 @@ Depends On
 - ``orion.llm.quota`` (QuotaTracker)
 - ``orion.core.exceptions`` (LLMError, QuotaExceededError)
 """
+
 from __future__ import annotations
 
 import time
@@ -66,9 +67,7 @@ class OpenRouterProvider:
         self._api_key = api_key
         self._model = model
         self._vision_model = vision_model
-        self._quota_tracker = quota_tracker or QuotaTracker(
-            "openrouter", daily_budget_usd=5.00
-        )
+        self._quota_tracker = quota_tracker or QuotaTracker("openrouter", daily_budget_usd=5.00)
         self._max_cost_per_task = max_cost_per_task_usd
         self._timeout = timeout
         self._client: httpx.AsyncClient | None = None

@@ -6,6 +6,7 @@ Tests cover:
 - Domain-specific fields (cycle_path, tool_name, provider, etc.)
 - Exception message formatting
 """
+
 from __future__ import annotations
 
 import pytest
@@ -72,9 +73,7 @@ class TestHierarchy:
             (RollbackError, OrionError),
         ],
     )
-    def test_inheritance(
-        self, exc_class: type[OrionError], parent_class: type[Exception]
-    ) -> None:
+    def test_inheritance(self, exc_class: type[OrionError], parent_class: type[Exception]) -> None:
         """Each exception is a subclass of its documented parent."""
         assert issubclass(exc_class, parent_class)
         assert issubclass(exc_class, OrionError)

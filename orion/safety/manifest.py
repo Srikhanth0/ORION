@@ -14,6 +14,7 @@ Depends On
 ----------
 - ``orion.core.exceptions`` (PermissionDeniedError)
 """
+
 from __future__ import annotations
 
 import fnmatch
@@ -27,9 +28,7 @@ from orion.core.exceptions import PermissionDeniedError
 
 logger = structlog.get_logger(__name__)
 
-_CONFIGS_DIR = (
-    Path(__file__).resolve().parent.parent.parent / "configs"
-)
+_CONFIGS_DIR = Path(__file__).resolve().parent.parent.parent / "configs"
 
 
 class PermissionManifest:
@@ -49,9 +48,7 @@ class PermissionManifest:
         config_path: str | Path | None = None,
     ) -> None:
         self._rules: dict[str, Any] = {}
-        path = config_path or (
-            _CONFIGS_DIR / "safety" / "permissions.yaml"
-        )
+        path = config_path or (_CONFIGS_DIR / "safety" / "permissions.yaml")
         self._load(Path(path))
 
     def _load(self, path: Path) -> None:
@@ -112,8 +109,7 @@ class PermissionManifest:
                 rule="explicit_deny",
             )
             raise PermissionDeniedError(
-                f"Tool '{tool_name}' is explicitly denied "
-                f"in category '{cat}'",
+                f"Tool '{tool_name}' is explicitly denied in category '{cat}'",
                 tool_name=tool_name,
                 action=tool_name,
                 rule="explicit_deny",
@@ -127,9 +123,7 @@ class PermissionManifest:
 
         # Check allowed list if present
         allowed = rules.get("allowed", [])
-        if allowed and not self._action_matches(
-            tool_name, allowed
-        ):
+        if allowed and not self._action_matches(tool_name, allowed):
             logger.warning(
                 "permission_denied",
                 tool=tool_name,
@@ -137,8 +131,7 @@ class PermissionManifest:
                 rule="not_in_allowed_list",
             )
             raise PermissionDeniedError(
-                f"Tool '{tool_name}' is not in the allowed "
-                f"list for category '{cat}'",
+                f"Tool '{tool_name}' is not in the allowed list for category '{cat}'",
                 tool_name=tool_name,
                 action=tool_name,
                 rule="not_in_allowed_list",
@@ -171,17 +164,14 @@ class PermissionManifest:
         # Check denied patterns first
         denied_patterns = rules.get("denied_patterns", [])
         for pattern in denied_patterns:
-            if pattern in command or re.search(
-                re.escape(pattern), command
-            ):
+            if pattern in command or re.search(re.escape(pattern), command):
                 logger.warning(
                     "shell_command_denied",
                     command=command[:100],
                     pattern=pattern,
                 )
                 raise PermissionDeniedError(
-                    f"Shell command matches denied pattern: "
-                    f"'{pattern}'",
+                    f"Shell command matches denied pattern: '{pattern}'",
                     tool_name=tool_name,
                     action=command[:100],
                     rule=f"denied_pattern:{pattern}",
@@ -190,14 +180,10 @@ class PermissionManifest:
         # Check allowed patterns
         allowed_patterns = rules.get("allowed_patterns", [])
         if allowed_patterns:
-            matched = any(
-                fnmatch.fnmatch(command, p)
-                for p in allowed_patterns
-            )
+            matched = any(fnmatch.fnmatch(command, p) for p in allowed_patterns)
             if not matched:
                 raise PermissionDeniedError(
-                    "Shell command does not match any "
-                    "allowed pattern",
+                    "Shell command does not match any allowed pattern",
                     tool_name=tool_name,
                     action=command[:100],
                     rule="no_allowed_pattern_match",
@@ -242,8 +228,7 @@ class PermissionManifest:
                     denied_prefix=dp,
                 )
                 raise PermissionDeniedError(
-                    f"Path '{resolved}' is in denied area "
-                    f"'{dp}'",
+                    f"Path '{resolved}' is in denied area '{dp}'",
                     tool_name=tool_name,
                     action=resolved,
                     rule=f"denied_path:{dp}",
@@ -252,22 +237,16 @@ class PermissionManifest:
         # Check allowed paths
         allowed_paths = rules.get("allowed_paths", [])
         if allowed_paths:
-            in_allowed = any(
-                resolved.startswith(ap)
-                for ap in allowed_paths
-            )
+            in_allowed = any(resolved.startswith(ap) for ap in allowed_paths)
             if not in_allowed:
                 raise PermissionDeniedError(
-                    f"Path '{resolved}' is not in any "
-                    "allowed directory",
+                    f"Path '{resolved}' is not in any allowed directory",
                     tool_name=tool_name,
                     action=resolved,
                     rule="not_in_allowed_path",
                 )
 
-    def _action_matches(
-        self, tool_name: str, patterns: list[str]
-    ) -> bool:
+    def _action_matches(self, tool_name: str, patterns: list[str]) -> bool:
         """Check if a tool name matches any pattern in a list.
 
         Args:
@@ -297,10 +276,7 @@ class PermissionManifest:
         upper = tool_name.upper()
         if upper.startswith("GITHUB"):
             return "github"
-        if any(
-            upper.startswith(p)
-            for p in ("SHELL", "CMD", "OS")
-        ):
+        if any(upper.startswith(p) for p in ("SHELL", "CMD", "OS")):
             return "shell"
         if upper.startswith(("FILE", "DIR")):
             return "filesystem"

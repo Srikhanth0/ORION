@@ -13,6 +13,7 @@ Depends On
 - ``orion.memory.working`` (WorkingMemory)
 - ``orion.memory.longterm`` (LongTermMemory, PastTask)
 """
+
 from __future__ import annotations
 
 import structlog
@@ -64,33 +65,21 @@ class MemoryRetriever:
         if self._working is not None:
             ctx = self._working.to_context_str()
             if ctx and ctx != "No prior context.":
-                sections.append(
-                    "=== WORKING MEMORY ===\n" + ctx
-                )
+                sections.append("=== WORKING MEMORY ===\n" + ctx)
 
         # Tier 2: Long-term memory
-        if (
-            include_longterm
-            and self._longterm is not None
-            and query
-        ):
-            past = self._longterm.retrieve(
-                query, top_k=top_k
-            )
+        if include_longterm and self._longterm is not None and query:
+            past = self._longterm.retrieve(query, top_k=top_k)
             if past:
                 lt_text = self._format_past_tasks(past)
-                sections.append(
-                    "=== PAST TASKS ===\n" + lt_text
-                )
+                sections.append("=== PAST TASKS ===\n" + lt_text)
 
         if not sections:
             return "No prior context available."
 
         return "\n\n".join(sections)
 
-    def get_past_tasks(
-        self, query: str, top_k: int = 3
-    ) -> list[PastTask]:
+    def get_past_tasks(self, query: str, top_k: int = 3) -> list[PastTask]:
         """Retrieve similar past tasks.
 
         Args:
@@ -104,9 +93,7 @@ class MemoryRetriever:
             return []
         return self._longterm.retrieve(query, top_k=top_k)
 
-    def _format_past_tasks(
-        self, tasks: list[PastTask]
-    ) -> str:
+    def _format_past_tasks(self, tasks: list[PastTask]) -> str:
         """Format past tasks for prompt injection.
 
         Args:
@@ -126,8 +113,5 @@ class MemoryRetriever:
                 f"{t.duration_seconds:.1f}s)"
             )
             if t.step_results_summary:
-                lines.append(
-                    f"   Summary: "
-                    f"{t.step_results_summary[:150]}"
-                )
+                lines.append(f"   Summary: {t.step_results_summary[:150]}")
         return "\n".join(lines)

@@ -14,6 +14,7 @@ Depends On
 - ``agentscope`` >= 1.0.18
 - ``configs/llm/router.yaml`` (optional, for role mapping)
 """
+
 from __future__ import annotations
 
 import os
@@ -30,10 +31,12 @@ _initialized = False
 
 # ── Bootstrap ────────────────────────────────────────────────────────────────
 
+
 def _load_env() -> None:
     """Load .env once so API keys are available."""
     try:
         from dotenv import load_dotenv
+
         load_dotenv(override=False)
     except ImportError:
         pass
@@ -67,9 +70,13 @@ def init_agentscope(
     if cfg_path.exists():
         try:
             import yaml
-            cfg = yaml.safe_load(
-                cfg_path.read_text(encoding="utf-8"),
-            ) or {}
+
+            cfg = (
+                yaml.safe_load(
+                    cfg_path.read_text(encoding="utf-8"),
+                )
+                or {}
+            )
             roles = cfg.get("roles", {})
             logger.info(
                 "agentscope_initialized",
@@ -87,6 +94,7 @@ def init_agentscope(
 
 
 # ── Model factory ────────────────────────────────────────────────────────────
+
 
 def build_model(provider: str | None = None) -> Any:
     """Instantiate an AgentScope chat model for the requested provider.
@@ -124,8 +132,7 @@ def build_model(provider: str | None = None) -> Any:
             provider = "vllm"
         else:
             raise ValueError(
-                "No LLM provider configured. "
-                "Set GROQ_API_KEY or OPENROUTER_API_KEY in .env"
+                "No LLM provider configured. Set GROQ_API_KEY or OPENROUTER_API_KEY in .env"
             )
 
     # ── Groq ─────────────────────────────────────────────────────
@@ -135,7 +142,8 @@ def build_model(provider: str | None = None) -> Any:
         return OpenAIChatModel(
             config_name="orion_groq",
             model_name=os.environ.get(
-                "GROQ_TEXT_MODEL", "llama-3.3-70b-versatile",
+                "GROQ_TEXT_MODEL",
+                "llama-3.3-70b-versatile",
             ),
             api_key=groq_key,
             client_kwargs={"timeout": 60.0, "max_retries": 2},
@@ -148,7 +156,8 @@ def build_model(provider: str | None = None) -> Any:
         return OpenAIChatModel(
             config_name="orion_openrouter",
             model_name=os.environ.get(
-                "OPENROUTER_DEFAULT_MODEL", "google/gemma-2-9b-it:free",
+                "OPENROUTER_DEFAULT_MODEL",
+                "google/gemma-2-9b-it:free",
             ),
             api_key=openrouter_key,
             client_kwargs={"timeout": 60.0, "max_retries": 2},
@@ -162,7 +171,8 @@ def build_model(provider: str | None = None) -> Any:
         return OpenAIChatModel(
             config_name="orion_vllm",
             model_name=os.environ.get(
-                "VLLM_MODEL", "Qwen/Qwen3-VL-4B-Instruct",
+                "VLLM_MODEL",
+                "Qwen/Qwen3-VL-4B-Instruct",
             ),
             api_key="not-needed",
             client_kwargs={"timeout": 60.0, "max_retries": 2},

@@ -1,4 +1,5 @@
 """Unit tests for PlannerAgent."""
+
 from __future__ import annotations
 
 import json
@@ -49,6 +50,7 @@ class MockModel:
         class FakeResponse:
             def __init__(self, text: str) -> None:
                 self.content = [{"text": text}]
+
         return FakeResponse(self._responses[idx])
 
 
@@ -58,20 +60,22 @@ class TestPlannerAgent:
     @pytest.mark.asyncio
     async def test_valid_plan_generation(self) -> None:
         """Planner produces valid structured plan."""
-        valid_plan = json.dumps({
-            "chain_of_thought": "Need to create a file",
-            "subtasks": [
-                {
-                    "id": "s1",
-                    "action": "Create file test.txt",
-                    "tool": "file_write",
-                    "params": {"path": "test.txt", "content": "hello"},
-                    "expected_output": "File created",
-                    "depends_on": [],
-                    "is_destructive": False,
-                }
-            ],
-        })
+        valid_plan = json.dumps(
+            {
+                "chain_of_thought": "Need to create a file",
+                "subtasks": [
+                    {
+                        "id": "s1",
+                        "action": "Create file test.txt",
+                        "tool": "file_write",
+                        "params": {"path": "test.txt", "content": "hello"},
+                        "expected_output": "File created",
+                        "depends_on": [],
+                        "is_destructive": False,
+                    }
+                ],
+            }
+        )
 
         model = MockModel([valid_plan])
         agent = PlannerAgent(model=model)
@@ -85,29 +89,31 @@ class TestPlannerAgent:
     @pytest.mark.asyncio
     async def test_plan_with_dependencies(self) -> None:
         """Planner handles multi-step plans with dependencies."""
-        plan = json.dumps({
-            "chain_of_thought": "First create dir, then file",
-            "subtasks": [
-                {
-                    "id": "s1",
-                    "action": "Create directory",
-                    "tool": "mkdir",
-                    "params": {"path": "mydir"},
-                    "expected_output": "Directory created",
-                    "depends_on": [],
-                    "is_destructive": False,
-                },
-                {
-                    "id": "s2",
-                    "action": "Create file in directory",
-                    "tool": "file_write",
-                    "params": {"path": "mydir/test.txt"},
-                    "expected_output": "File created",
-                    "depends_on": ["s1"],
-                    "is_destructive": False,
-                },
-            ],
-        })
+        plan = json.dumps(
+            {
+                "chain_of_thought": "First create dir, then file",
+                "subtasks": [
+                    {
+                        "id": "s1",
+                        "action": "Create directory",
+                        "tool": "mkdir",
+                        "params": {"path": "mydir"},
+                        "expected_output": "Directory created",
+                        "depends_on": [],
+                        "is_destructive": False,
+                    },
+                    {
+                        "id": "s2",
+                        "action": "Create file in directory",
+                        "tool": "file_write",
+                        "params": {"path": "mydir/test.txt"},
+                        "expected_output": "File created",
+                        "depends_on": ["s1"],
+                        "is_destructive": False,
+                    },
+                ],
+            }
+        )
 
         model = MockModel([plan])
         agent = PlannerAgent(model=model)
@@ -129,12 +135,14 @@ class TestPlannerAgent:
     @pytest.mark.asyncio
     async def test_plan_validation_duplicate_ids(self) -> None:
         """Planner rejects plan with duplicate subtask IDs."""
-        bad_plan = json.dumps({
-            "subtasks": [
-                {"id": "s1", "action": "a", "tool": "t"},
-                {"id": "s1", "action": "b", "tool": "t"},
-            ],
-        })
+        bad_plan = json.dumps(
+            {
+                "subtasks": [
+                    {"id": "s1", "action": "a", "tool": "t"},
+                    {"id": "s1", "action": "b", "tool": "t"},
+                ],
+            }
+        )
         model = MockModel([bad_plan] * 3)
         agent = PlannerAgent(model=model, max_retries=1)
 
@@ -144,9 +152,11 @@ class TestPlannerAgent:
     @pytest.mark.asyncio
     async def test_orion_meta_propagated(self) -> None:
         """orion_meta is propagated to output message."""
-        plan = json.dumps({
-            "subtasks": [{"id": "s1", "action": "test", "tool": "t"}],
-        })
+        plan = json.dumps(
+            {
+                "subtasks": [{"id": "s1", "action": "test", "tool": "t"}],
+            }
+        )
         model = MockModel([plan])
         agent = PlannerAgent(model=model)
         result = await agent.reply(_make_msg(task_id="t_abc"))
@@ -158,9 +168,11 @@ class TestPlannerAgent:
     @pytest.mark.asyncio
     async def test_retry_on_parse_error(self) -> None:
         """Planner retries on JSON parse failure."""
-        valid_plan = json.dumps({
-            "subtasks": [{"id": "s1", "action": "test", "tool": "t"}],
-        })
+        valid_plan = json.dumps(
+            {
+                "subtasks": [{"id": "s1", "action": "test", "tool": "t"}],
+            }
+        )
         model = MockModel(["not json!!!", valid_plan])
         agent = PlannerAgent(model=model, max_retries=1)
         result = await agent.reply(_make_msg())
@@ -171,22 +183,24 @@ class TestPlannerAgent:
     @pytest.mark.asyncio
     async def test_plan_with_tool_category(self) -> None:
         """Planner passes plans with tool_category and tool_name fields."""
-        plan = json.dumps({
-            "chain_of_thought": "Need to list processes",
-            "subtasks": [
-                {
-                    "id": "s1",
-                    "action": "List processes",
-                    "tool_category": "os_tools",
-                    "tool_name": "OS_LIST_PROCESSES",
-                    "tool": "os_list_processes",
-                    "params": {},
-                    "expected_output": "Process list",
-                    "depends_on": [],
-                    "is_destructive": False,
-                },
-            ],
-        })
+        plan = json.dumps(
+            {
+                "chain_of_thought": "Need to list processes",
+                "subtasks": [
+                    {
+                        "id": "s1",
+                        "action": "List processes",
+                        "tool_category": "os_tools",
+                        "tool_name": "OS_LIST_PROCESSES",
+                        "tool": "os_list_processes",
+                        "params": {},
+                        "expected_output": "Process list",
+                        "depends_on": [],
+                        "is_destructive": False,
+                    },
+                ],
+            }
+        )
 
         model = MockModel([plan])
         agent = PlannerAgent(model=model)

@@ -1,4 +1,5 @@
 """Status routes — GET /health, GET /ready, GET /metrics."""
+
 from __future__ import annotations
 
 import structlog
@@ -32,9 +33,7 @@ async def ready() -> dict[str, object]:
     try:
         import chromadb
 
-        client = chromadb.PersistentClient(
-            path=".orion_memory"
-        )
+        client = chromadb.PersistentClient(path=".orion_memory")
         client.heartbeat()
         checks["chromadb"] = True
     except Exception:

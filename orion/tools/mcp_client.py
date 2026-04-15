@@ -15,6 +15,7 @@ Depends On
 - ``orion.safety.rollback`` (RollbackEngine)
 - ``orion.safety.gate`` (DestructiveOpGate)
 """
+
 from __future__ import annotations
 
 import time
@@ -121,22 +122,18 @@ class MCPClient:
 
         # Step 3: Permission check
         if self._manifest is not None:
-            self._manifest.check(
-                tool_name, params, category=tool.category.value
-            )
+            self._manifest.check(tool_name, params, category=tool.category.value)
 
         # Step 4: Destructive gate
         if tool.is_destructive and self._gate is not None:
             approval = await self._gate.approve(
-                tool_name, params,
-                rollback_available=(
-                    self._rollback is not None
-                ),
+                tool_name,
+                params,
+                rollback_available=(self._rollback is not None),
             )
             if not approval.approved:
                 raise PermissionDeniedError(
-                    f"Destructive op '{tool_name}' denied: "
-                    f"{approval.reason}",
+                    f"Destructive op '{tool_name}' denied: {approval.reason}",
                     tool_name=tool_name,
                 )
 
@@ -144,13 +141,15 @@ class MCPClient:
         if self._rollback is not None:
             self._rollback.checkpoint(
                 subtask_id or "unknown",
-                tool_name, params,
+                tool_name,
+                params,
             )
 
         # Step 6: Execute via MCP
         try:
             raw = await self._execute(
-                tool_name, params,
+                tool_name,
+                params,
                 timeout=timeout or self._default_timeout,
             )
             elapsed = (time.monotonic() - start) * 1000
@@ -207,11 +206,11 @@ class MCPClient:
 
         try:
             import jsonschema
+
             jsonschema.validate(params, schema)
         except Exception as exc:
             raise ToolError(
-                f"Parameter validation failed for "
-                f"'{tool_name}': {exc}",
+                f"Parameter validation failed for '{tool_name}': {exc}",
                 tool_name=tool_name,
             ) from exc
 
@@ -249,8 +248,7 @@ class MCPClient:
             except TimeoutError as exc:
                 if attempt == max_retries:
                     raise ToolError(
-                        f"Tool '{tool_name}' timed out "
-                        f"after {timeout}s ({max_retries} attempts)",
+                        f"Tool '{tool_name}' timed out after {timeout}s ({max_retries} attempts)",
                         tool_name=tool_name,
                     ) from exc
                 delay = base_delay * (2 ** (attempt - 1))

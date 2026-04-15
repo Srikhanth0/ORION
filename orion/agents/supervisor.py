@@ -13,6 +13,7 @@ Depends On
 ----------
 - ``orion.agents.base`` (BaseOrionAgent)
 """
+
 from __future__ import annotations
 
 import json
@@ -165,8 +166,7 @@ class SupervisorAgent(BaseOrionAgent):
                     "action": "ESCALATE",
                     "status": "escalated",
                     "reasoning": (
-                        f"Soft failure after {retry_count} retries. "
-                        "Escalating to human."
+                        f"Soft failure after {retry_count} retries. Escalating to human."
                     ),
                     "issues": issues,
                 }
@@ -212,9 +212,7 @@ class SupervisorAgent(BaseOrionAgent):
             "issues": issues,
         }
 
-    async def _is_safe_to_retry(
-        self, issues: list[dict[str, Any]], task_id: str
-    ) -> bool:
+    async def _is_safe_to_retry(self, issues: list[dict[str, Any]], task_id: str) -> bool:
         """Ask LLM if auto-retry is safe given the issues.
 
         Falls back to True if no model is available (dev mode).

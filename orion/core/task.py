@@ -18,6 +18,7 @@ Depends On
 - ``pydantic`` for data validation.
 - ``orion.core.exceptions.TaskValidationError`` for error signalling.
 """
+
 from __future__ import annotations
 
 import enum
@@ -166,9 +167,7 @@ class TaskDAG(BaseModel, frozen=True):
                 in_degree[subtask.id] += 1
 
         # Kahn's: start with zero-in-degree nodes
-        queue: deque[str] = deque(
-            sid for sid, deg in in_degree.items() if deg == 0
-        )
+        queue: deque[str] = deque(sid for sid, deg in in_degree.items() if deg == 0)
         visited_count = 0
 
         while queue:
@@ -181,9 +180,7 @@ class TaskDAG(BaseModel, frozen=True):
 
         if visited_count != len(known_ids):
             # Nodes still with in_degree > 0 form the cycle
-            cycle_nodes = [
-                sid for sid, deg in in_degree.items() if deg > 0
-            ]
+            cycle_nodes = [sid for sid, deg in in_degree.items() if deg > 0]
             raise TaskValidationError(
                 f"TaskDAG contains a dependency cycle involving: {cycle_nodes}.",
                 task_id=self.task_id,
@@ -209,9 +206,7 @@ class TaskDAG(BaseModel, frozen=True):
                 adjacency[dep_id].append(subtask.id)
                 in_degree[subtask.id] += 1
 
-        queue: deque[str] = deque(
-            sid for sid, deg in in_degree.items() if deg == 0
-        )
+        queue: deque[str] = deque(sid for sid, deg in in_degree.items() if deg == 0)
         result: list[Subtask] = []
 
         while queue:
@@ -264,9 +259,7 @@ class Task(BaseModel):
 
     task_id: str = Field(default_factory=lambda: f"t_{uuid4().hex[:8]}")
     instruction: str
-    created_at: datetime = Field(
-        default_factory=lambda: datetime.now(UTC)
-    )
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     dag: TaskDAG | None = None
     status: TaskStatus = TaskStatus.PENDING
     metadata: dict[str, Any] = Field(default_factory=dict)

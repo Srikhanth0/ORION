@@ -15,6 +15,7 @@ Depends On
 - ``agentscope.message`` (TextBlock)
 - ``orion.llm.router`` (AdaptiveLLMRouter)
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -103,9 +104,7 @@ class OrionModelWrapper(ChatModelBase):
             },
         )
 
-    def format_messages(
-        self, messages: list[dict[str, Any]]
-    ) -> list[dict[str, Any]]:
+    def format_messages(self, messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Pass through — messages are already in OpenAI format.
 
         Args:

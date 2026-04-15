@@ -14,6 +14,7 @@ Test Scenarios
 7. Circuit breaker trips after 5 failures in 60s
 8. Preferred provider override
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -335,9 +336,7 @@ class TestStructuredOutput:
         ]
         router = await _make_router(providers)
 
-        result = await router.chat_structured(
-            _MESSAGES, self._TestSchema
-        )
+        result = await router.chat_structured(_MESSAGES, self._TestSchema)
 
         assert result.name == "test"
         assert result.value == 42
@@ -360,9 +359,7 @@ class TestStructuredOutput:
         providers = [RetryProvider(provider_name="vllm")]
         router = await _make_router(providers)
 
-        result = await router.chat_structured(
-            _MESSAGES, self._TestSchema
-        )
+        result = await router.chat_structured(_MESSAGES, self._TestSchema)
 
         assert result.name == "fixed"
         assert result.value == 99
@@ -380,9 +377,7 @@ class TestStructuredOutput:
         router = await _make_router(providers)
 
         with pytest.raises(StructuredOutputError) as exc_info:
-            await router.chat_structured(
-                _MESSAGES, self._TestSchema
-            )
+            await router.chat_structured(_MESSAGES, self._TestSchema)
 
         assert exc_info.value.schema_name == "_TestSchema"
         assert exc_info.value.raw_output == "not json at all"
@@ -397,9 +392,7 @@ class TestCircuitBreaker:
     @pytest.mark.asyncio
     async def test_circuit_breaker_trips(self) -> None:
         """5 failures in 60s trips the breaker."""
-        cb = CircuitBreaker(
-            failure_threshold=5, window_seconds=60.0, recovery_timeout=300.0
-        )
+        cb = CircuitBreaker(failure_threshold=5, window_seconds=60.0, recovery_timeout=300.0)
 
         assert not cb.is_open
 
@@ -474,9 +467,7 @@ class TestPreferredProvider:
         providers = _make_providers()
         router = await _make_router(providers)
 
-        response = await router.chat(
-            _MESSAGES, preferred_provider="openrouter"
-        )
+        response = await router.chat(_MESSAGES, preferred_provider="openrouter")
 
         assert response.provider == "openrouter"
         assert providers[0].call_count == 0  # vLLM not tried
@@ -490,9 +481,7 @@ class TestPreferredProvider:
         )
         router = await _make_router(providers)
 
-        response = await router.chat(
-            _MESSAGES, preferred_provider="openrouter"
-        )
+        response = await router.chat(_MESSAGES, preferred_provider="openrouter")
 
         # OpenRouter tried first but failed, then vLLM succeeds
         assert response.provider == "vllm"
@@ -572,10 +561,12 @@ class TestQuotaTracker:
     @pytest.mark.asyncio
     async def test_update_from_headers(self) -> None:
         tracker = QuotaTracker("groq")
-        await tracker.update_from_headers({
-            "x-ratelimit-remaining-requests": "25",
-            "x-ratelimit-remaining-tokens": "10000",
-        })
+        await tracker.update_from_headers(
+            {
+                "x-ratelimit-remaining-requests": "25",
+                "x-ratelimit-remaining-tokens": "10000",
+            }
+        )
 
         quota = await tracker.get_quota()
         assert quota.remaining_requests == 25
@@ -593,9 +584,11 @@ class TestQuotaTracker:
     @pytest.mark.asyncio
     async def test_reset(self) -> None:
         tracker = QuotaTracker("groq")
-        await tracker.update_from_headers({
-            "x-ratelimit-remaining-requests": "0",
-        })
+        await tracker.update_from_headers(
+            {
+                "x-ratelimit-remaining-requests": "0",
+            }
+        )
         quota = await tracker.get_quota()
         assert quota.remaining_requests == 0
 

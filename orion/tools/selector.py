@@ -12,6 +12,7 @@ Depends On
 ----------
 - ``orion.tools.registry`` (ToolRegistry, ScoredTool)
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -120,9 +121,6 @@ class ToolSelector:
         lines = ["Suggested tools (ranked by relevance):"]
         for i, s in enumerate(suggestions, 1):
             destr = " [DESTRUCTIVE]" if s.is_destructive else ""
-            lines.append(
-                f"  {i}. {s.name} (score={s.score}, "
-                f"{s.category}{destr}): {s.description}"
-            )
+            lines.append(f"  {i}. {s.name} (score={s.score}, {s.category}{destr}): {s.description}")
 
         return "\n".join(lines)

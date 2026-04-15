@@ -7,6 +7,7 @@ Exports
 - ``configure_logging`` — structlog configuration
 - Metric recording helpers
 """
+
 from __future__ import annotations
 
 from orion.observability.logger import (

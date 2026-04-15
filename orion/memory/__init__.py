@@ -9,6 +9,7 @@ Exports
 - ``MemoryRetriever`` — unified retrieval facade
 - ``PastTask`` — retrieved task dataclass
 """
+
 from __future__ import annotations
 
 from orion.memory.embedder import Embedder
@@ -25,4 +26,3 @@ __all__: list[str] = [
     "PastTask",
     "WorkingMemory",
 ]
-

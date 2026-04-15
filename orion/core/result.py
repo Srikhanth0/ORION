@@ -18,6 +18,7 @@ Depends On
 - ``pydantic`` for data validation.
 - ``orion.core.task.TaskStatus`` for status enum.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -72,9 +73,7 @@ class RollbackPoint(BaseModel, frozen=True):
     subtask_id: str
     checkpoint_type: str
     checkpoint_data: dict[str, object] = Field(default_factory=dict)
-    created_at: datetime = Field(
-        default_factory=lambda: datetime.now(UTC)
-    )
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class TaskResult(BaseModel, frozen=True):

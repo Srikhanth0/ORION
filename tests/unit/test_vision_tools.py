@@ -1,4 +1,5 @@
 """Unit tests for vision and computer control tools."""
+
 from __future__ import annotations
 
 import base64
@@ -59,8 +60,10 @@ class TestVisionTools:
         class MockClient:
             async def __aenter__(self):
                 return self
+
             async def __aexit__(self, exc_type, exc_val, exc_tb):
                 pass
+
             post = mock_post
 
         mocker.patch("httpx.AsyncClient", return_value=MockClient())
@@ -117,9 +120,7 @@ class TestVisionTools:
             "orion.tools.categories.vision_tools.analyze_screen",
             new_callable=AsyncMock,
         )
-        mock_analyze.return_value = {
-            "result": '{"x": 0, "y": 0, "found": false}'
-        }
+        mock_analyze.return_value = {"result": '{"x": 0, "y": 0, "found": false}'}
 
         result = await vision_tools.click_element("Submit button")
 

@@ -2,6 +2,7 @@
 
 Uses an in-memory ChromaDB client for speed — no disk I/O needed.
 """
+
 from __future__ import annotations
 
 import pytest

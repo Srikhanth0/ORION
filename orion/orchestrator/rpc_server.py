@@ -7,6 +7,7 @@ Usage:
     python -m orion.orchestrator.rpc_server --agent planner --port 12310
     python -m orion.orchestrator.rpc_server --agent executor --port 12311
 """
+
 from __future__ import annotations
 
 import argparse
