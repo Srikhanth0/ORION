@@ -93,7 +93,7 @@ class OrionModelWrapper(ChatModelBase):
 
         # Convert to AgentScope ChatResponse
         return ChatResponse(
-            content=[TextBlock(text=llm_response.content)],
+            content=[TextBlock(type="text", text=llm_response.content)],
             metadata={
                 "provider": llm_response.provider,
                 "model": llm_response.model,

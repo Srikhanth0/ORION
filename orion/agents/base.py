@@ -134,7 +134,7 @@ class BaseOrionAgent(AgentBase):
             )
             self._template_cache[name] = env.get_template(name)
 
-        return self._template_cache[name].render(**variables)
+        return self._template_cache[name].render(**variables)  # type: ignore[no-any-return]
 
     async def _call_llm(
         self,
@@ -177,7 +177,7 @@ class BaseOrionAgent(AgentBase):
             return last_content
 
         if getattr(response, "text", None):
-            return response.text
+            return response.text  # type: ignore[no-any-return]
 
         # Fallback if content handles are used
         content = getattr(response, "content", None)

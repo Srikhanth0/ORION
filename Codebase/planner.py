@@ -73,6 +73,7 @@ class PlannerAgent(AgentBase):
 
     def reply(self, x: Msg) -> Msg:
         import structlog
+
         log = structlog.get_logger()
 
         content = x.content if isinstance(x.content, dict) else {"instruction": str(x.content)}
@@ -82,7 +83,9 @@ class PlannerAgent(AgentBase):
 
         prompt = f"Instruction: {instruction}"
         if retry_feedback:
-            prompt += f"\n\nPrevious attempt #{retry_count} failed: {retry_feedback}\nAdjust the plan."
+            prompt += (
+                f"\n\nPrevious attempt #{retry_count} failed: {retry_feedback}\nAdjust the plan."
+            )
         prompt += "\n\nRespond with ONLY the JSON array:"
 
         for attempt in range(3):
@@ -118,13 +121,15 @@ class PlannerAgent(AgentBase):
                 time.sleep(1.5 * (attempt + 1))
 
         # Fallback: single echo so pipeline doesn't hang
-        fallback = [{
-            "id": "t1",
-            "description": instruction,
-            "tool": "execute_command",
-            "server": "bash",
-            "arguments": {"command": f"echo 'Task: {instruction}'"},
-            "depends_on": [],
-        }]
+        fallback = [
+            {
+                "id": "t1",
+                "description": instruction,
+                "tool": "execute_command",
+                "server": "bash",
+                "arguments": {"command": f"echo 'Task: {instruction}'"},
+                "depends_on": [],
+            }
+        ]
         log.warning("planner_used_fallback", instruction=instruction[:60])
         return Msg(name=self.name, content=fallback, role="assistant")

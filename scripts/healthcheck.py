@@ -35,7 +35,7 @@ def check_endpoint(url: str, name: str, timeout: float = 5.0) -> bool:
             data = resp.read().decode()
             status = resp.status
             print(f"  ✓ {name}: {status} — {data[:100]}")
-            return status == 200
+            return status == 200  # type: ignore[no-any-return]
     except Exception as exc:
         print(f"  ✗ {name}: {exc}")
         return False

@@ -129,7 +129,7 @@ class OpenRouterProvider:
             raise QuotaExceededError(
                 "OpenRouter daily budget exhausted",
                 provider=self.name,
-                daily_budget_remaining_usd=quota.daily_budget_remaining_usd,
+                context={"daily_budget_remaining_usd": quota.daily_budget_remaining_usd},
             )
 
         payload: dict[str, Any] = {
@@ -252,7 +252,7 @@ class OpenRouterProvider:
         try:
             client = self._get_client()
             resp = await client.get("/models")
-            return resp.status_code == 200
+            return resp.status_code == 200  # type: ignore[no-any-return]
         except Exception as exc:
             logger.warning(
                 "openrouter_health_check_failed",

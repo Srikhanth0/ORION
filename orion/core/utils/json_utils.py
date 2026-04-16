@@ -32,12 +32,12 @@ def extract_json_array(text: str) -> list[Any] | None:
 
     candidate = text[start : end + 1]
     try:
-        return json.loads(candidate)
+        return json.loads(candidate)  # type: ignore[no-any-return]
     except json.JSONDecodeError:
         # Try to fix common LLM mistakes (like trailing commas before ])
         try:
             fixed = re.sub(r",\s*\]", "]", candidate)
-            return json.loads(fixed)
+            return json.loads(fixed)  # type: ignore[no-any-return]
         except json.JSONDecodeError:
             return None
 
@@ -69,7 +69,7 @@ def parse_json(text: str) -> dict[str, Any]:
         cleaned = "\n".join(lines)
 
     try:
-        return json.loads(cleaned)
+        return json.loads(cleaned)  # type: ignore[no-any-return]
     except json.JSONDecodeError as exc:
         logger.warning(
             "json_parse_failed",

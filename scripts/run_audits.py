@@ -4,6 +4,7 @@ import os
 import subprocess
 import sys
 import time
+from typing import Any
 
 import requests
 import yaml
@@ -12,7 +13,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-def audit_dependencies():
+def audit_dependencies() -> None:
     print("--- Phase 1.1: Dependency Audit ---")
     print("Python:", sys.version.split(" ")[0])
     subprocess.run([sys.executable, "-m", "uv", "--version"])
@@ -34,20 +35,20 @@ def audit_dependencies():
     print("uvx missing" if uvx_res.returncode else "uvx found")
 
 
-def audit_configs():
+def audit_configs() -> None:
     print("\n--- Phase 1.2: Config Check ---")
     for f in ["configs/llm/router.yaml", "configs/safety/permissions.yaml", ".env"]:
         print(f"OK: {f}" if os.path.exists(f) else f"BREAK: Missing {f}")
 
     try:
-        with open("configs/llm/router.yaml") as f:
+        with open("configs/llm/router.yaml") as f:  # type: ignore[assignment]
             yaml.safe_load(f)
         print("router.yaml: valid")
     except Exception as e:
         print("BREAK: router.yaml invalid YAML", e)
 
     try:
-        with open("configs/safety/permissions.yaml") as f:
+        with open("configs/safety/permissions.yaml") as f:  # type: ignore[assignment]
             yaml.safe_load(f)
         print("permissions.yaml: valid")
     except Exception as e:
@@ -58,7 +59,7 @@ def audit_configs():
         print(f"OK: {k}={v[:8]}..." if v else f"WARN: {k} is unset")
 
 
-def audit_llm_reachability():
+def audit_llm_reachability() -> None:
     print("\n--- Phase 1.3: LLM Reachability ---")
     groq_key = os.environ.get("GROQ_API_KEY", "")
     if groq_key:
@@ -115,7 +116,7 @@ def audit_llm_reachability():
             print("BREAK: Vision API unreachable —", e)
 
 
-def wait_for_server(base_url="http://localhost:8080"):
+def wait_for_server(base_url: str = "http://localhost:8080") -> bool:
     print("Waiting for server to start...")
     for _ in range(30):
         try:
@@ -130,7 +131,7 @@ def wait_for_server(base_url="http://localhost:8080"):
     return False
 
 
-def run_task(instruction, timeout_sec, base_url="http://localhost:8080"):
+def run_task(instruction: str, timeout_sec: int, base_url: str = "http://localhost:8080") -> Any:
     print(f"\n=== SUBMITTING: {instruction}")
     r = requests.post(
         f"{base_url}/v1/tasks", json={"instruction": instruction, "timeout_seconds": timeout_sec}
@@ -159,7 +160,7 @@ def run_task(instruction, timeout_sec, base_url="http://localhost:8080"):
     return final_res
 
 
-def run_integration_tests(base_url="http://localhost:8080"):
+def run_integration_tests(base_url: str = "http://localhost:8080") -> None:
     print("\n=== Phase 1.4: Tool Discovery ===")
     tools_r = requests.get(f"{base_url}/v1/tools")
     if tools_r.ok:
@@ -214,7 +215,7 @@ def run_integration_tests(base_url="http://localhost:8080"):
         print("Metrics endpoint not available")
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="ORION Audit Runner")
     parser.add_argument(
         "--mode",

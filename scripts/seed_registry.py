@@ -18,6 +18,7 @@ import asyncio
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 
 def parse_args() -> argparse.Namespace:
@@ -55,7 +56,7 @@ Examples:
     return parser.parse_args()
 
 
-async def discover_all(config_path: str) -> None:
+async def discover_all(config_path: str) -> Any:
     """Discover tools from all configured MCP servers.
 
     Args:

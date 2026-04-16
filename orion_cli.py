@@ -11,11 +11,15 @@ Usage:
     orion --submit "task"    # Submit a task
     orion --safe-mode         # Enable sandbox mode
 """
+
 from __future__ import annotations
 
 import argparse
-import sys
+
+# Force UTF-8 for Rich/Console on Windows
+import io
 import os
+import sys
 
 import httpx
 from prompt_toolkit import PromptSession
@@ -27,8 +31,6 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-# Force UTF-8 for Rich/Console on Windows
-import io
 if sys.platform == "win32" and getattr(sys.stdout, "encoding", "") != "utf-8":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
@@ -36,7 +38,7 @@ if sys.platform == "win32" and getattr(sys.stdout, "encoding", "") != "utf-8":
 console = Console()
 
 
-def parse_args():
+def parse_args():  # type: ignore[no-untyped-def]
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
         description="ORION CLI — Autonomous OS Agent",
@@ -65,6 +67,7 @@ def parse_args():
         help="ORION API server URL",
     )
     return parser.parse_args()
+
 
 API_BASE = "http://localhost:8080"
 
@@ -118,21 +121,15 @@ def submit_task(instruction: str, safe_mode: bool = False) -> None:
             resp.raise_for_status()
             data = resp.json()
             task_id = data.get("task_id", "unknown")
-            console.print(
-                f"  [green]✓[/] Task submitted: [bold]{task_id}[/]"
-            )
-            console.print(
-                f"  [dim]Stream with:[/] /stream {task_id}"
-            )
+            console.print(f"  [green]✓[/] Task submitted: [bold]{task_id}[/]")
+            console.print(f"  [dim]Stream with:[/] /stream {task_id}")
     except httpx.ConnectError:
         console.print(
-            "  [red]✗[/] Cannot connect to ORION API at "
-            f"{API_BASE}. Is the server running?"
+            "  [red]✗[/] Cannot connect to ORION API at " f"{API_BASE}. Is the server running?"
         )
     except httpx.HTTPStatusError as exc:
         console.print(
-            f"  [red]✗[/] API error: {exc.response.status_code} — "
-            f"{exc.response.text[:200]}"
+            f"  [red]✗[/] API error: {exc.response.status_code} — " f"{exc.response.text[:200]}"
         )
     except Exception as exc:
         console.print(f"  [red]✗[/] Error: {exc}")
@@ -144,47 +141,38 @@ def stream_task(task_id: str) -> None:
     console.print(f"  [dim]Streaming from {url}...[/]")
 
     try:
-        with httpx.Client(timeout=None) as client:
-            with client.stream("GET", url) as response:
-                response.raise_for_status()
-                with Live(console=console, refresh_per_second=4) as live:
-                    buffer = ""
-                    for chunk in response.iter_text():
-                        buffer += chunk
-                        lines = buffer.split("\n")
-                        buffer = lines[-1]  # keep incomplete line
+        with httpx.Client(timeout=None) as client, client.stream("GET", url) as response:
+            response.raise_for_status()
+            with Live(console=console, refresh_per_second=4) as live:
+                buffer = ""
+                for chunk in response.iter_text():
+                    buffer += chunk
+                    lines = buffer.split("\n")
+                    buffer = lines[-1]  # keep incomplete line
 
-                        for line in lines[:-1]:
-                            line = line.strip()
-                            if not line:
-                                continue
-                            if line.startswith("event:"):
-                                event_type = line[6:].strip()
-                                live.update(
-                                    Text(
-                                        f"⚡ {event_type}",
-                                        style="bold yellow",
-                                    )
+                    for line in lines[:-1]:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        if line.startswith("event:"):
+                            event_type = line[6:].strip()
+                            live.update(
+                                Text(
+                                    f"⚡ {event_type}",
+                                    style="bold yellow",
                                 )
-                            elif line.startswith("data:"):
-                                data = line[5:].strip()
-                                console.print(
-                                    f"  [cyan]{data}[/]"
-                                )
-                            if line == "event: done":
-                                console.print(
-                                    "  [green]✓ Stream complete[/]"
-                                )
-                                return
+                            )
+                        elif line.startswith("data:"):
+                            data = line[5:].strip()
+                            console.print(f"  [cyan]{data}[/]")
+                        if line == "event: done":
+                            console.print("  [green]✓ Stream complete[/]")
+                            return
 
     except httpx.ConnectError:
-        console.print(
-            "  [red]✗[/] Cannot connect to ORION API."
-        )
+        console.print("  [red]✗[/] Cannot connect to ORION API.")
     except httpx.HTTPStatusError as exc:
-        console.print(
-            f"  [red]✗[/] Stream error: {exc.response.status_code}"
-        )
+        console.print(f"  [red]✗[/] Stream error: {exc.response.status_code}")
     except Exception as exc:
         console.print(f"  [red]✗[/] Error: {exc}")
 
@@ -228,11 +216,10 @@ def list_tools() -> None:
         console.print(table)
 
     except httpx.ConnectError:
-        console.print(
-            "  [red]✗[/] Cannot connect to ORION API."
-        )
+        console.print("  [red]✗[/] Cannot connect to ORION API.")
     except Exception as exc:
         console.print(f"  [red]✗[/] Error: {exc}")
+
 
 def ensure_server_running(api_base: str) -> None:
     """Ensure the API server is running, start it if not."""
@@ -242,18 +229,19 @@ def ensure_server_running(api_base: str) -> None:
         return
     except httpx.RequestError:
         pass
-    
+
     console.print("  [yellow]API server not running. Starting it in the background...[/]")
     import subprocess
     import time
+
     server_script = os.path.join(os.path.dirname(__file__), "run_server.py")
     subprocess.Popen(
         [sys.executable, server_script],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
-        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == "win32" else 0
+        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == "win32" else 0,
     )
-    
+
     with console.status("  [yellow]Waiting for API server to start...[/]"):
         for _ in range(30):
             try:
@@ -263,7 +251,7 @@ def ensure_server_running(api_base: str) -> None:
                 return
             except httpx.RequestError:
                 time.sleep(1)
-        
+
     console.print("  [red]✗[/] API server failed to start within 30 seconds.")
 
 
@@ -275,7 +263,7 @@ def main() -> None:
     global API_BASE
     if args.server:
         API_BASE = args.server
-        
+
     ensure_server_running(API_BASE)
 
     # Non-interactive modes
@@ -305,9 +293,7 @@ def main() -> None:
             if safe_mode:
                 prompt_html += "<ansienvironment>[SAFE]</ansienvironment> "
             prompt_html += "› "
-            user_input = session.prompt(
-                HTML(prompt_html)
-            ).strip()
+            user_input = session.prompt(HTML(prompt_html)).strip()
         except (EOFError, KeyboardInterrupt):
             console.print("\n  [dim]Goodbye.[/]")
             break
@@ -329,9 +315,7 @@ def main() -> None:
         elif user_input.startswith("/stream"):
             parts = user_input.split(maxsplit=1)
             if len(parts) < 2:
-                console.print(
-                    "  [yellow]Usage:[/] /stream <task_id>"
-                )
+                console.print("  [yellow]Usage:[/] /stream <task_id>")
             else:
                 stream_task(parts[1].strip())
 
@@ -342,8 +326,7 @@ def main() -> None:
 
         elif user_input.startswith("/"):
             console.print(
-                f"  [yellow]Unknown command:[/] {user_input}. "
-                "Type /help for available commands."
+                f"  [yellow]Unknown command:[/] {user_input}. " "Type /help for available commands."
             )
 
         else:

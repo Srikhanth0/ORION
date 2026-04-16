@@ -1,9 +1,12 @@
-import uvicorn
 import sys
+
+import uvicorn
+
 sys.path.insert(0, "C:/Users/srikh/Downloads/ORION")
 
 # Change to project root
 import os
+
 os.chdir("C:/Users/srikh/Downloads/ORION")
 
 # Start server

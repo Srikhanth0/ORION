@@ -4,16 +4,16 @@ File: orion/tools/registry.py  (prepend this block at the top, then replace bare
 Commit: fix(tools): resolve platform-correct binary names for uvx/npx on Windows
 """
 
-import shutil
-import sys
 import logging
+import shutil
 import subprocess
-from typing import Optional
+import sys
 
 log = logging.getLogger(__name__)
 
 
 # ── Platform binary resolution ────────────────────────────────────────────────
+
 
 def _resolve_bin(name: str) -> str:
     """
@@ -39,7 +39,7 @@ def _resolve_bin(name: str) -> str:
 
 # Resolved binary names — use these everywhere instead of bare string literals
 UVX_BIN = _resolve_bin("uvx")
-NPX_BIN  = _resolve_bin("npx")
+NPX_BIN = _resolve_bin("npx")
 
 
 def _warn_missing(bin_name: str) -> None:
@@ -51,7 +51,9 @@ def _warn_missing(bin_name: str) -> None:
             "  • Windows bare PowerShell: install Node.js LTS + uv, then restart shell\n"
             "  • Recommended: run ORION inside WSL2 to avoid Windows PATH fragmentation\n"
             "  • Quick check: run `where %s` (PowerShell) or `which %s` (bash)",
-            bin_name, bin_name, bin_name,
+            bin_name,
+            bin_name,
+            bin_name,
         )
 
 
@@ -61,6 +63,7 @@ _warn_missing(NPX_BIN)
 
 
 # ── Drop-in replacement helpers ───────────────────────────────────────────────
+
 
 def run_uvx(args: list[str], **kwargs) -> subprocess.CompletedProcess:
     """Run a uvx command using the platform-correct binary."""
@@ -73,6 +76,7 @@ def run_npx(args: list[str], **kwargs) -> subprocess.CompletedProcess:
 
 
 # ── Registry builder (existing logic — wire in the helpers above) ─────────────
+
 
 def build_registry() -> dict:
     """
@@ -87,11 +91,11 @@ def build_registry() -> dict:
     # Example: load the os_automation MCP via uvx
     try:
         result = run_uvx(
-            ["mcp-server-os-automation", "--list-tools"],
-            capture_output=True, text=True, timeout=15
+            ["mcp-server-os-automation", "--list-tools"], capture_output=True, text=True, timeout=15
         )
         if result.returncode == 0:
             import json
+
             loaded = json.loads(result.stdout)
             tools.update(loaded)
             log.info("Loaded %d OS automation tools via uvx", len(loaded))
@@ -106,10 +110,13 @@ def build_registry() -> dict:
     try:
         result = run_npx(
             ["@modelcontextprotocol/server-puppeteer", "--list-tools"],
-            capture_output=True, text=True, timeout=15
+            capture_output=True,
+            text=True,
+            timeout=15,
         )
         if result.returncode == 0:
             import json
+
             loaded = json.loads(result.stdout)
             tools.update(loaded)
             log.info("Loaded %d browser tools via npx", len(loaded))

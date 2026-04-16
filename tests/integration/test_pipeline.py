@@ -145,7 +145,7 @@ async def submit_task(instruction: str) -> str:
             json={"instruction": instruction},
         )
         resp.raise_for_status()
-        return resp.json()["task_id"]
+        return resp.json()["task_id"]  # type: ignore[no-any-return]
 
 
 # ── Integration tests ─────────────────────────────────────────────────────────
@@ -183,9 +183,10 @@ async def test_task2_reasoning_memory():
 
     final = get_final_status(events)
     # Accept 'completed' or 'completed_degraded' (Qdrant offline fallback)
-    assert final in ("completed", "completed_degraded"), (
-        f"Task 2 status={final!r} — stalled at agent: {get_last_agent(events)!r}"
-    )
+    assert final in (
+        "completed",
+        "completed_degraded",
+    ), f"Task 2 status={final!r} — stalled at agent: {get_last_agent(events)!r}"
 
     # Check that memory was accessed (even if via fallback)
     memory_events = [e for e in events if "memory" in e.content.lower()]

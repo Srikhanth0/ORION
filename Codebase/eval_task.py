@@ -22,7 +22,6 @@ import json
 import time
 from pathlib import Path
 
-
 SAMPLE_TASKS_PATH = Path("tests/fixtures/sample_tasks.json")
 
 
@@ -90,7 +89,7 @@ def main() -> None:
     args = parser.parse_args()
 
     tasks = load_tasks()
-    print(f"═══ ORION Evaluation Suite ═══")
+    print("═══ ORION Evaluation Suite ═══")
     print(f"  Loaded {len(tasks)} sample tasks\n")
 
     if args.task:
@@ -115,9 +114,11 @@ def main() -> None:
         if result.get("hint"):
             print(f"      Hint:  {result['hint']}")
 
-    print(f"\n  Results: "
-          f"{sum(1 for r in results if r['status'] == 'completed')} passed / "
-          f"{len(results)} total")
+    print(
+        f"\n  Results: "
+        f"{sum(1 for r in results if r['status'] == 'completed')} passed / "
+        f"{len(results)} total"
+    )
 
 
 if __name__ == "__main__":

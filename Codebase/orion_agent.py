@@ -21,10 +21,9 @@ import json
 import os
 import re
 import sys
-import textwrap
 import time
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -33,6 +32,7 @@ from typing import Any
 # 1. RESULT TYPE
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class Result:
     success: bool
@@ -40,11 +40,11 @@ class Result:
     error: str = ""
 
     @classmethod
-    def ok(cls, data: Any = None) -> "Result":
+    def ok(cls, data: Any = None) -> Result:
         return cls(success=True, data=data)
 
     @classmethod
-    def fail(cls, error: str) -> "Result":
+    def fail(cls, error: str) -> Result:
         return cls(success=False, error=error)
 
     def __repr__(self):
@@ -57,6 +57,7 @@ class Result:
 # ─────────────────────────────────────────────────────────────────────────────
 # 2. LLM CLIENT (Groq-based, with OpenRouter fallback)
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class CircuitState(Enum):
     CLOSED = "closed"
@@ -134,6 +135,7 @@ class OrionLLM:
     async def _call_groq(self, messages: list[dict], json_mode: bool) -> Result:
         try:
             import httpx
+
             headers = {
                 "Authorization": f"Bearer {self._groq_key}",
                 "Content-Type": "application/json",
@@ -162,6 +164,7 @@ class OrionLLM:
     async def _call_openrouter(self, messages: list[dict], json_mode: bool) -> Result:
         try:
             import httpx
+
             headers = {
                 "Authorization": f"Bearer {self._or_key}",
                 "Content-Type": "application/json",
@@ -187,6 +190,7 @@ class OrionLLM:
 # ─────────────────────────────────────────────────────────────────────────────
 # 3. MEMORY LAYER
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class WorkingMemory:
     """Sliding-window in-process context for the current session."""
@@ -214,6 +218,7 @@ class LongTermMemory:
         self._available = False
         try:
             import chromadb
+
             self._client = chromadb.PersistentClient(path=persist_path)
             self._collection = self._client.get_or_create_collection("orion_tasks")
             self._available = True
@@ -238,9 +243,7 @@ class LongTermMemory:
             results = self._collection.query(query_texts=[query], n_results=n)
             return [
                 {"document": doc, "metadata": meta}
-                for doc, meta in zip(
-                    results["documents"][0], results["metadatas"][0]
-                )
+                for doc, meta in zip(results["documents"][0], results["metadatas"][0], strict=False)
             ]
         except Exception:
             return []
@@ -252,7 +255,7 @@ class LongTermMemory:
 
 BLOCKED_PATTERNS = [
     r"rm\s+-rf\s+/",
-    r":(){ :|:& };:",      # fork bomb
+    r":(){ :|:& };:",  # fork bomb
     r"dd\s+if=.*of=/dev",  # disk wipe
     r"chmod\s+777\s+/",
 ]
@@ -294,7 +297,7 @@ class SafetyGate:
         return True, "ok"
 
     def request_approval(self, tool_name: str, arguments: dict) -> bool:
-        print(f"\n[SAFETY] High-risk action requires approval:")
+        print("\n[SAFETY] High-risk action requires approval:")
         print(f"  Tool: {tool_name}")
         print(f"  Args: {json.dumps(arguments, indent=2)}")
         response = input("  Approve? [y/N]: ").strip().lower()
@@ -304,6 +307,7 @@ class SafetyGate:
 # ─────────────────────────────────────────────────────────────────────────────
 # 5. TOOL REGISTRY (OS + Vision — extensible to full MCP)
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class ToolRegistry:
     """
@@ -427,6 +431,7 @@ class ToolRegistry:
     async def _take_screenshot(self) -> str:
         try:
             from PIL import ImageGrab
+
             img = ImageGrab.grab()
             buf = io.BytesIO()
             img.save(buf, format="PNG")
@@ -443,6 +448,7 @@ class ToolRegistry:
                 "hint": "Start the Colab vision server and set VISION_API_URL in .env",
             }
         import httpx
+
         img_b64 = await self._take_screenshot()
         if img_b64.startswith("error"):
             return {"error": img_b64}
@@ -451,7 +457,8 @@ class ToolRegistry:
                 f"{self._vision_url}/analyze",
                 json={
                     "image_base64": img_b64,
-                    "prompt": prompt or (
+                    "prompt": prompt
+                    or (
                         "Describe this screen. List all visible UI elements "
                         "with their approximate pixel coordinates."
                     ),
@@ -469,11 +476,11 @@ class ToolRegistry:
         result = await self._analyze_screen(
             prompt=(
                 f"Find the UI element matching: '{description}'. "
-                "Return ONLY valid JSON: {\"x\": <int>, \"y\": <int>, \"found\": true|false}"
+                'Return ONLY valid JSON: {"x": <int>, "y": <int>, "found": true|false}'
             )
         )
         text = result.get("result", "")
-        match = re.search(r'\{[^}]+\}', text, re.DOTALL)
+        match = re.search(r"\{[^}]+\}", text, re.DOTALL)
         if not match:
             return {"success": False, "error": "Model did not return coordinates"}
         try:
@@ -488,6 +495,7 @@ class ToolRegistry:
     async def _type_text(self, text: str) -> dict:
         try:
             import pyautogui
+
             pyautogui.write(text, interval=0.04)
             return {"success": True, "typed": text}
         except ImportError:
@@ -496,6 +504,7 @@ class ToolRegistry:
     async def _press_key(self, key: str) -> dict:
         try:
             import pyautogui
+
             pyautogui.hotkey(*key.split("+"))
             return {"success": True, "key": key}
         except ImportError:
@@ -642,7 +651,8 @@ class ExecutorAgent:
         while pending and iterations < max_iterations:
             iterations += 1
             ready = [
-                t for t in pending.values()
+                t
+                for t in pending.values()
                 if all(dep in results for dep in t.get("depends_on", []))
             ]
             if not ready:
@@ -652,11 +662,13 @@ class ExecutorAgent:
             coros = [self.execute_subtask(t, results) for t in ready]
             batch = await asyncio.gather(*coros, return_exceptions=True)
 
-            for task, result in zip(ready, batch):
+            for task, result in zip(ready, batch, strict=False):
                 if isinstance(result, Exception):
                     results[task["id"]] = {
-                        "id": task["id"], "success": False,
-                        "output": None, "error": str(result),
+                        "id": task["id"],
+                        "success": False,
+                        "output": None,
+                        "error": str(result),
                     }
                 else:
                     results[task["id"]] = result
@@ -672,10 +684,17 @@ class VerifierAgent:
         self.llm = llm
 
     async def verify(self, instruction: str, results: dict[str, dict]) -> dict:
-        summary = json.dumps({
-            k: {"success": v["success"], "error": v.get("error"), "output_preview": str(v.get("output", ""))[:200]}
-            for k, v in results.items()
-        }, indent=2)
+        summary = json.dumps(
+            {
+                k: {
+                    "success": v["success"],
+                    "error": v.get("error"),
+                    "output_preview": str(v.get("output", ""))[:200],
+                }
+                for k, v in results.items()
+            },
+            indent=2,
+        )
 
         messages = [
             {"role": "system", "content": VERIFIER_SYSTEM},
@@ -723,6 +742,7 @@ class SupervisorAgent:
 # ─────────────────────────────────────────────────────────────────────────────
 # 7. PIPELINE ORCHESTRATOR
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class ORIONPipeline:
     """
@@ -825,9 +845,11 @@ async def interactive_repl():
     try:
         from prompt_toolkit import PromptSession
         from prompt_toolkit.history import InMemoryHistory
+
         session = PromptSession(history=InMemoryHistory())
         get_input = lambda: session.prompt_async("[ORION] › ")
     except ImportError:
+
         async def get_input():
             loop = asyncio.get_event_loop()
             return await loop.run_in_executor(None, lambda: input("[ORION] › "))

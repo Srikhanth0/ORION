@@ -26,9 +26,7 @@ import structlog
 
 # Patterns for sensitive value redaction
 _SECRET_PATTERNS = re.compile(
-    r"(api[_-]?key|secret|token|password|authorization"
-    r"|bearer|credentials)"
-    r"\s*[:=]\s*\S+",
+    r"(api[_-]?key|secret|token|password|authorization" r"|bearer|credentials)" r"\s*[:=]\s*\S+",
     re.IGNORECASE,
 )
 

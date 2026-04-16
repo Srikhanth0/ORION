@@ -14,8 +14,8 @@ causing UnicodeEncodeError before any test logic runs.
 
 # ── Prepend to EVERY script entry point (eval_task.py, healthcheck.py, etc.) ─
 
-import sys
 import io
+import sys
 
 # ORION-FIX: Reconfigure stdout/stderr to UTF-8 before any print/rich output.
 # Safe no-op on Linux/macOS where encoding is already UTF-8.

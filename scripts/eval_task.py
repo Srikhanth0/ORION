@@ -20,6 +20,7 @@ import sys
 import time
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 # Windows event loop fix (must be FIRST, before any asyncio import side-effects)
 if sys.platform == "win32":
@@ -38,13 +39,14 @@ if str(_project_root) not in sys.path:
 _FIXTURES = Path(__file__).resolve().parent.parent / "tests" / "fixtures" / "sample_tasks.json"
 
 
-def load_tasks() -> list[dict]:
+def load_tasks() -> list[dict[str, Any]]:
     """Load sample tasks from fixture."""
     with open(_FIXTURES) as f:
-        return json.load(f)
+        tasks: list[dict[str, Any]] = json.load(f)
+        return tasks
 
 
-def run_task(task: dict, verbose: bool = False) -> dict:
+def run_task(task: dict[str, Any], verbose: bool = False) -> dict[str, Any]:
     """Run a single evaluation task."""
     task_id = task.get("id", "unknown")
     instruction = task.get("instruction", "")
@@ -67,7 +69,7 @@ def run_task(task: dict, verbose: bool = False) -> dict:
         from orion.agents.supervisor import SupervisorAgent
         from orion.agents.verifier import VerifierAgent
 
-        async def _run() -> dict:
+        async def _run() -> dict[str, Any]:
             initial = Msg(
                 name="user",
                 role="user",
@@ -101,7 +103,7 @@ def run_task(task: dict, verbose: bool = False) -> dict:
             return {"result": final_msg.content[:200], "decision": decision}
 
         # Each task gets a FRESH event loop — no state leakage between tasks
-        async def run_with_fresh_loop():
+        async def run_with_fresh_loop():  # type: ignore[no-untyped-def]
             if sys.platform == "win32":
                 asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
             return await _run()

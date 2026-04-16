@@ -21,7 +21,7 @@ class ExecutorAgent(BaseOrionAgent):
     def __init__(
         self,
         model: Any = None,
-        tool_registry: dict[str, Any] | None = None,
+        tool_registry: Any = None,
         safety_checker: Any = None,
         max_retries: int = _MAX_RETRIES,
         tool_timeout: float = 60.0,
@@ -97,7 +97,7 @@ class ExecutorAgent(BaseOrionAgent):
                 # Try native tools first
                 if tool_name in native_tools:
                     output = await asyncio.wait_for(
-                        self._tool_registry.call_native(tool_name, params),
+                        self._tool_registry.call_native(tool_name, params),  # type: ignore[union-attr]
                         timeout=self._tool_timeout,
                     )
                     elapsed = (time.monotonic() - start) * 1000

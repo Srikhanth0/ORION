@@ -24,13 +24,20 @@ logger = structlog.get_logger(__name__)
 
 
 class PlannerAgent(BaseOrionAgent):
-    def __init__(self, name: str = "Planner", model: Any = None, tool_registry: Any = None) -> None:
+    def __init__(
+        self,
+        name: str = "Planner",
+        model: Any = None,
+        tool_registry: Any = None,
+        max_retries: int = 3,
+    ) -> None:
         super().__init__(
             agent_name=name,
             model=model,
             prompt_template="planner_system.j2",
         )
         self._tool_registry = tool_registry
+        self._max_retries = max_retries
 
     def _build_sys_prompt(self, instruction: str) -> str:
         """Compose the system prompt with dynamic tool list."""
@@ -69,7 +76,7 @@ class PlannerAgent(BaseOrionAgent):
 
         sys_prompt = self._build_sys_prompt(instruction)
 
-        for attempt in range(3):
+        for attempt in range(self._max_retries):
             try:
                 raw = await self._call_llm(
                     [

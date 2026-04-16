@@ -159,7 +159,7 @@ class ToolRegistry:
         self._servers: dict[str, MCPServerEntry] = {}
         self._tool_to_server: dict[str, str] = {}
         self._native_tools: dict[str, Any] = {}  # name → async callable
-        self._embeddings: dict[str, Any] | None = None
+        self._embeddings: Any = None
         self._embed_model: Any = None
         self._defaults: dict[str, Any] = {}
 
@@ -506,11 +506,11 @@ class ToolRegistry:
 
             for tool_def in VISION_TOOL_DEFINITIONS:
                 self.register_native(
-                    name=tool_def["name"],
+                    name=str(tool_def["name"]),
                     fn=tool_def["fn"],
-                    description=tool_def.get("description", ""),
+                    description=str(tool_def.get("description", "")),
                     params_schema=tool_def.get("params_schema"),
-                    is_destructive=tool_def.get("is_destructive", False),
+                    is_destructive=bool(tool_def.get("is_destructive", False)),
                     category=ToolCategory.VISION,
                 )
 
@@ -538,11 +538,11 @@ class ToolRegistry:
 
             for tool_def in NATIVE_OS_TOOL_DEFINITIONS:
                 self.register_native(
-                    name=tool_def["name"],
+                    name=str(tool_def["name"]),
                     fn=tool_def["fn"],
-                    description=tool_def.get("description", ""),
-                    params_schema=tool_def.get("params_schema"),
-                    is_destructive=tool_def.get("is_destructive", False),
+                    description=str(tool_def.get("description", "")),
+                    params_schema=tool_def.get("params_schema"),  # type: ignore[arg-type]
+                    is_destructive=bool(tool_def.get("is_destructive", False)),
                     category=ToolCategory.OS,
                 )
 

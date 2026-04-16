@@ -140,6 +140,7 @@ class TestMCPIntegration:
         )
         assert result.ok is True
         assert result.duration_ms >= 0
+        assert result.output is not None
         assert "simulated result" in result.output
 
     @pytest.mark.asyncio

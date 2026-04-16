@@ -163,7 +163,7 @@ async def _run_pipeline(
 
                 # Emit subtask_queued for each subtask in the plan
                 try:
-                    plan_data = json.loads(plan_msg.content)
+                    plan_data = json.loads(str(plan_msg.content))
                     subtasks = plan_data.get("subtasks", [])
                     for st in subtasks:
                         _emit(
@@ -194,7 +194,7 @@ async def _run_pipeline(
 
                 # Emit subtask_result for each result
                 try:
-                    results = json.loads(exec_msg.content)
+                    results = json.loads(str(exec_msg.content))
                     for r in results:
                         _emit(
                             queue,
@@ -214,7 +214,7 @@ async def _run_pipeline(
                 verify_msg = await verifier.reply(exec_msg)
 
                 try:
-                    verify_data = json.loads(verify_msg.content)
+                    verify_data = json.loads(str(verify_msg.content))
                     _emit(
                         queue,
                         EventType.VERIFIER_RESULT,
@@ -239,7 +239,7 @@ async def _run_pipeline(
                 final_msg = await supervisor.reply(verify_msg)
 
                 try:
-                    decision_data = json.loads(final_msg.content)
+                    decision_data = json.loads(str(final_msg.content))
                     _emit(
                         queue,
                         EventType.SUPERVISOR_DECISION,
@@ -304,7 +304,7 @@ async def submit_task(body: TaskRequest, request: Request) -> TaskResponse:
     """
     # Check semaphore without blocking
     if _semaphore._value == 0:
-        return JSONResponse(
+        return JSONResponse(  # type: ignore[return-value, no-any-return]
             status_code=429,
             content=ProblemDetail(
                 type="/errors/too-many-tasks",
@@ -399,7 +399,7 @@ async def stream_task(task_id: str, request: Request) -> EventSourceResponse:
     if queue is None:
         raise HTTPException(404, "Stream not available")
 
-    async def event_generator():
+    async def event_generator() -> Any:
         heartbeat_interval = 15
         while True:
             try:

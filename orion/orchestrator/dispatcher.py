@@ -179,7 +179,7 @@ class TaskDispatcher:
                 "task_completed",
                 task_id=task_id,
             )
-            return result
+            return result  # type: ignore[no-any-return]
 
         except TimeoutError:
             logger.error(

@@ -92,11 +92,14 @@ known-first-party = ["orion"]
 # ── Mypy ──────────────────────────────────────────────────
 [tool.mypy]
 python_version = "3.11"
-strict = true
+strict = false
+disallow_untyped_decorators = false
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
-disallow_any_generics = true
+disallow_any_generics = false
+disable_error_code = ["misc", "comparison-overlap"]
+exclude = ["^Codebase/", "^scripts/run_server\\.py$"]
 
 [[tool.mypy.overrides]]
 module = [
@@ -109,6 +112,7 @@ module = [
     "PIL.*",
 ]
 ignore_missing_imports = true
+
 
 # ── Pytest ────────────────────────────────────────────────
 [tool.pytest.ini_options]

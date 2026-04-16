@@ -2,7 +2,7 @@
 # ═══════════════════════════════════════════════════════════════
 # ORION — vLLM Server Launcher
 # ═══════════════════════════════════════════════════════════════
-# Starts a vLLM OpenAI-compatible server in Docker with
+# Starts a vLLM OpenAI-compatible server in Podman with
 # Qwen 2.5 72B GPTQ-Int4 for local zero-cost inference.
 #
 # Usage:
@@ -29,7 +29,7 @@ if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
     cat <<EOF
 ORION vLLM Server Launcher
 
-  Starts Qwen 2.5 72B (GPTQ-Int4) in a Docker container with
+  Starts Qwen 2.5 72B (GPTQ-Int4) in a Podman container with
   OpenAI-compatible API on port $VLLM_PORT.
 
   Environment Variables:
@@ -53,27 +53,27 @@ fi
 echo "═══ ORION vLLM Launcher ═══"
 echo ""
 
-if ! command -v docker &>/dev/null; then
-    echo "ERROR: Docker is not installed or not in PATH."
+if ! command -v podman &>/dev/null; then
+    echo "ERROR: Podman is not installed or not in PATH."
     exit 1
 fi
 
-if ! docker info &>/dev/null; then
-    echo "ERROR: Docker daemon is not running."
+if ! podman info &>/dev/null; then
+    echo "ERROR: Podman daemon is not running."
     exit 1
 fi
 
 # Check for NVIDIA runtime
-if ! docker info 2>/dev/null | grep -q "nvidia"; then
-    echo "WARNING: NVIDIA Docker runtime not detected."
+if ! podman info 2>/dev/null | grep -q "nvidia"; then
+    echo "WARNING: NVIDIA Podman runtime not detected."
     echo "  vLLM requires GPU access. Install nvidia-container-toolkit."
     echo ""
 fi
 
 # ── Stop existing container ──────────────────────────────────
-if docker ps -a --format '{{.Names}}' | grep -q "^${VLLM_CONTAINER_NAME}$"; then
+if podman ps -a --format '{{.Names}}' | grep -q "^${VLLM_CONTAINER_NAME}$"; then
     echo "  → Stopping existing container: ${VLLM_CONTAINER_NAME}"
-    docker rm -f "${VLLM_CONTAINER_NAME}" &>/dev/null || true
+    podman rm -f "${VLLM_CONTAINER_NAME}" &>/dev/null || true
 fi
 
 # ── Launch vLLM ──────────────────────────────────────────────
@@ -86,7 +86,7 @@ echo "    TP Size:  ${VLLM_TENSOR_PARALLEL}"
 echo "    GPU Mem:  ${VLLM_GPU_MEM_UTIL}"
 echo ""
 
-docker run -d \
+podman run -d \
     --name "${VLLM_CONTAINER_NAME}" \
     --runtime nvidia \
     --gpus all \
@@ -129,5 +129,5 @@ while [ $elapsed -lt $MAX_WAIT ]; do
 done
 
 echo "  ✗ vLLM did not become healthy within ${MAX_WAIT}s."
-echo "  Check logs: docker logs ${VLLM_CONTAINER_NAME}"
+echo "  Check logs: podman logs ${VLLM_CONTAINER_NAME}"
 exit 1

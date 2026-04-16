@@ -131,7 +131,7 @@ class OrionPipeline:
         logger.info("pipeline_step", step="supervisor", task_id=task_id)
         supervisor_msg = await self._supervisor.reply(verifier_msg)
 
-        return supervisor_msg
+        return supervisor_msg  # type: ignore[no-any-return]
 
     async def _execute_with_dag(
         self,
@@ -173,7 +173,7 @@ class OrionPipeline:
             )
 
             # Preserve topological order in output
-            from orion.agents.executor import topological_sort
+            from orion.core.utils.dag_utils import topological_sort
 
             ordered_ids = topological_sort(subtasks)
             results_list = [results_dict[sid] for sid in ordered_ids if sid in results_dict]

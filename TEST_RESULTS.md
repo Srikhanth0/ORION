@@ -23,7 +23,7 @@ Commit: v1.0.0
 
 ## High Severity (P1 — degrades reliability)
 - [x] **Memory Vector Database**: The integration tests spawn `qdrant` as a service. However, running the API server locally without `.env` mapping to a live `qdrant` instance causes long-term tasks (Task 2) to loop or crash the verifier.
-- [x] **Windows Encoding**: The Python print outputs defaulted to `cp1252` causing unicode crashes (`━━━`) in the test harness wrapper. 
+- [x] **Windows Encoding**: The Python print outputs defaulted to `cp1252` causing unicode crashes (`━━━`) in the test harness wrapper.
 
 ## Medium (P2 — edge cases / observability gaps)
 - [x] **Subtask ID Missing**: Subtask polling relies entirely on the DAG, but timeout polling didn't capture intermediate granular steps effectively without listening to the `/v1/tasks/{id}/stream` endpoint via SSE.
@@ -35,5 +35,5 @@ Task 3: vLLM -> Groq
 
 ## Recommendations
 1. Patch the `uvx` and `npx` dependency resolutions to support vanilla Windows `.cmd` paths or enforce the stack runs entirely inside WSL2 / Windows Subsystem.
-2. Update the OpenRouter model fallbacks inside `.env` to `google/gemma-2-9b-it:free` or similar active endpoints. 
+2. Update the OpenRouter model fallbacks inside `.env` to `google/gemma-2-9b-it:free` or similar active endpoints.
 3. Recommend users explicitly run `podman-compose up` specifically for the `qdrant` database dependency *before* running `make dev` locally, otherwise Task 2 loops.

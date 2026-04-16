@@ -10,7 +10,8 @@ from typing import Any
 import pytest
 from agentscope.message import Msg
 
-from orion.agents.executor import ExecutorAgent, topological_sort
+from orion.agents.executor import ExecutorAgent
+from orion.core.utils.dag_utils import topological_sort
 from orion.orchestrator.dispatcher import execute_dag
 
 

@@ -36,4 +36,4 @@ os_automation:
       - systemd
       - init
       - sshd
-      - docker
+      - podman

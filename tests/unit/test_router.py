@@ -17,6 +17,7 @@ Test Scenarios
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
 
 import pytest
@@ -142,7 +143,7 @@ def _make_providers(
 
 
 async def _make_router(
-    providers: list[MockProvider],
+    providers: Sequence[MockProvider],
     cb_config: dict[str, Any] | None = None,
 ) -> AdaptiveLLMRouter:
     """Create an AdaptiveLLMRouter with pre-configured health statuses."""

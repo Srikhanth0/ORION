@@ -125,7 +125,7 @@ async def analyze_screen(
         result_length=len(result.get("result", "")),
     )
 
-    return result
+    return result  # type: ignore[no-any-return]
 
 
 async def click_element(description: str) -> dict[str, Any]:

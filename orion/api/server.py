@@ -11,6 +11,7 @@ import asyncio
 import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from typing import Any
 
 import structlog
 from fastapi import FastAPI, Request
@@ -61,7 +62,7 @@ async def lifespan(
         registry.register_os_tools()
 
         # Synchronous discovery of all tools so /v1/tools returns them immediately
-        async def _discover_all():
+        async def _discover_all() -> None:
             for cat in registry._servers:
                 try:
                     await registry.discover_tools(cat)

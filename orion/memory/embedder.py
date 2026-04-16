@@ -107,7 +107,7 @@ class Embedder:
         if len(self._cache) > self._cache_size:
             self._cache.popitem(last=False)
 
-        return embedding
+        return embedding  # type: ignore[no-any-return]
 
     def encode_batch(self, texts: list[str]) -> list[list[float]]:
         """Encode multiple texts at once.

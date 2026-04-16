@@ -15,7 +15,7 @@ This patch:
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 log = logging.getLogger(__name__)
 
@@ -27,10 +27,10 @@ class LongTermMemory:
     """
 
     def __init__(self, url: str = "http://localhost:6333", collection: str = "orion_tasks"):
-        self._url        = url
+        self._url = url
         self._collection = collection
-        self._client     = None
-        self._available  = False
+        self._client = None
+        self._available = False
         # Ephemeral fallback: {key: [payload, ...]}
         self._fallback: dict[str, list[dict]] = {}
 
@@ -52,10 +52,13 @@ class LongTermMemory:
                     vectors_config=VectorParams(size=1536, distance=Distance.COSINE),
                 )
 
-            self._client    = client
+            self._client = client
             self._available = True
-            log.info("Long-term memory: Qdrant connected at %s (collection: %s)",
-                     self._url, self._collection)
+            log.info(
+                "Long-term memory: Qdrant connected at %s (collection: %s)",
+                self._url,
+                self._collection,
+            )
 
         except ImportError:
             log.warning(
@@ -68,7 +71,8 @@ class LongTermMemory:
                 "  → Falling back to ephemeral in-process store.\n"
                 "  → For persistence, run:  podman-compose up -d qdrant\n"
                 "  → Then restart ORION:   make dev",
-                self._url, exc,
+                self._url,
+                exc,
             )
 
     # ── Public API ────────────────────────────────────────────────────────────
@@ -81,6 +85,7 @@ class LongTermMemory:
         """Upsert a vector + payload. Falls back to in-process dict when offline."""
         if self._available and self._client:
             from qdrant_client.models import PointStruct
+
             self._client.upsert(
                 collection_name=self._collection,
                 points=[PointStruct(id=hash(key) & 0xFFFFFFFF, vector=vector, payload=payload)],
@@ -116,6 +121,7 @@ class LongTermMemory:
         """Delete a stored entry by key."""
         if self._available and self._client:
             from qdrant_client.models import PointIdsList
+
             self._client.delete(
                 collection_name=self._collection,
                 points_selector=PointIdsList(points=[hash(key) & 0xFFFFFFFF]),

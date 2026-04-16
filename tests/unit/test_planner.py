@@ -43,7 +43,6 @@ class MockModel:
         self._call_count = 0
 
     async def __call__(self, messages: Any = None, **kwargs: Any) -> Any:
-
         idx = min(self._call_count, len(self._responses) - 1)
         self._call_count += 1
 
