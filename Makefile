@@ -89,6 +89,6 @@ clean: ## Remove build artifacts and caches
 	rm -rf .pytest_cache/ .ruff_cache/ .mypy_cache/
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -type f -name "*.pyc" -delete 2>/dev/null || true
-	rm -f eval_report_*.json
+	rm -rf eval_reports/ logs/
 	@echo "  ✓ Clean complete"
 

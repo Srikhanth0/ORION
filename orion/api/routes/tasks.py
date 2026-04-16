@@ -149,7 +149,12 @@ async def _run_pipeline(
                 )
                 registry = ToolRegistry(config_path=registry_config)
                 registry.load_from_config()
-                # Discover tools for planning
+
+                # Register native tools (no MCP/npx required)
+                registry.register_os_tools()
+                registry.register_vision_tools()
+
+                # Discover MCP-based tools for planning
                 for cat in registry._servers:
                     await registry.discover_tools(cat)
 

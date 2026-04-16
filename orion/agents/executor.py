@@ -12,6 +12,7 @@ from orion.agents.base import BaseOrionAgent
 
 logger = structlog.get_logger(__name__)
 
+
 _MAX_RETRIES = 3
 _BASE_BACKOFF_SECONDS = 1.0
 
@@ -69,7 +70,12 @@ class ExecutorAgent(BaseOrionAgent):
             source_msg=x,
         )
 
-    async def execute_subtask(self, subtask: dict[str, Any]) -> dict[str, Any]:
+    async def execute_subtask(
+        self,
+        subtask: dict[str, Any],
+        task_id: str = "unknown",
+        completed_results: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         subtask_id = subtask.get("id", "unknown")
         tool_name = subtask.get("tool", "unknown")
         params = subtask.get("params", {})
@@ -79,15 +85,8 @@ class ExecutorAgent(BaseOrionAgent):
             try:
                 native_tools = getattr(self._tool_registry, "_native_tools", {})
 
-                # Map wrong tool names to right ones
+                # Mappings for tool aliases
                 mappings = {
-                    "list_directory": "list_directory",
-                    "read_text_file": "read_text_file",
-                    "write_file": "write_file",
-                    "execute_command": "list_directory",
-                    "execute_shell": "list_directory",
-                    "bash": "list_directory",
-                    "shell": "list_directory",
                     "read_file": "read_text_file",
                     "cat": "read_text_file",
                     "ls": "list_directory",

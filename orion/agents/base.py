@@ -17,13 +17,14 @@ Depends On
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
 import structlog
 from agentscope.agent import AgentBase
 from agentscope.message import Msg
+
+from orion.core.utils.json_utils import parse_json
 
 logger = structlog.get_logger(__name__)
 
@@ -193,39 +194,8 @@ class BaseOrionAgent(AgentBase):
         return ""
 
     def _parse_json(self, text: str) -> dict[str, Any]:
-        """Parse JSON from LLM output, handling code fences.
-
-        Args:
-            text: Raw LLM output that should contain JSON.
-
-        Returns:
-            Parsed dict.
-
-        Raises:
-            ValueError: If JSON parsing fails.
-        """
-        cleaned = text.strip()
-
-        # Strip markdown code fences
-        if cleaned.startswith("```"):
-            lines = cleaned.split("\n")
-            # Remove first and last lines (fences)
-            if lines[0].startswith("```"):
-                lines = lines[1:]
-            if lines and lines[-1].strip() == "```":
-                lines = lines[:-1]
-            cleaned = "\n".join(lines)
-
-        try:
-            return json.loads(cleaned)
-        except json.JSONDecodeError as exc:
-            logger.warning(
-                "json_parse_failed",
-                agent=self.agent_name,
-                error=str(exc),
-                text_preview=cleaned[:200],
-            )
-            raise ValueError(f"Failed to parse JSON from LLM output: {exc}") from exc
+        """Parse JSON from LLM output, handling code fences."""
+        return parse_json(text)
 
     def _make_reply(
         self,

@@ -169,10 +169,12 @@ def main() -> int:
         "failed": total - passed,
         "results": results,
     }
+    output_dir = Path("eval_reports")
+    output_dir.mkdir(exist_ok=True)
     output_path = args.output or (
-        f"eval_report_{datetime.now(tz=UTC).strftime('%Y%m%d_%H%M%S')}.json"
+        output_dir / f"eval_report_{datetime.now(tz=UTC).strftime('%Y%m%d_%H%M%S')}.json"
     )
-    with open(output_path, "w") as f:
+    with open(output_path, "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2)
     print(f"  Report: {output_path}")
     return 0 if passed == total else 1

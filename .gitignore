@@ -45,9 +45,7 @@ checkpoints/
 *.checkpoint
 
 # ── Generated/Ephemeral Files ─────────────────────────────
-eval_report_*.json
-server.log
-server_err.log
+eval_reports/
+logs/
 skills-lock.json
-tree.txt
 *.bat

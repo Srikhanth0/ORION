@@ -25,3 +25,7 @@ Dockerfile
 .dockerignore
 .gitignore
 .orion_memory/
+eval_reports/
+*.json
+logs/
+*.bat

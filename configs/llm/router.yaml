@@ -7,8 +7,8 @@
 
 # Fallback chain order (first healthy provider wins)
 fallback_chain:
-  - groq           # Priority 1: free tier, rate-limited
-  - openrouter     # Priority 2: pay-per-token
+  - openrouter     # Priority 1: pay-per-token
+  - groq           # Priority 2: free tier, rate-limited
   - vllm           # Priority 3: local, zero-cost
 
 # Role-based model assignment
