@@ -17,7 +17,6 @@ node_modules/
 !README.md
 tests/
 infra/
-uv.lock
 Makefile
 docker-compose.yml
 podman-compose.yml
