@@ -111,7 +111,7 @@ jobs:
           echo "Waiting for server to be ready..."
           max_attempts=30
           count=0
-          until curl --output /dev/null --silent --head --fail http://localhost:8080/ready || [ $count -eq $max_attempts ]; do
+          until curl --output /dev/null --silent --fail http://localhost:8080/ready || [ $count -eq $max_attempts ]; do
             printf '.'
             sleep 2
             count=$((count + 1))
@@ -197,7 +197,7 @@ jobs:
           echo "Waiting for server to be ready..."
           max_attempts=30
           count=0
-          until curl --output /dev/null --silent --head --fail http://localhost:8080/ready || [ $count -eq $max_attempts ]; do
+          until curl --output /dev/null --silent --fail http://localhost:8080/ready || [ $count -eq $max_attempts ]; do
             printf '.'
             sleep 2
             count=$((count + 1))
