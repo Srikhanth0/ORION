@@ -145,17 +145,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set lower case owner name
+        run: |
+          echo "REPO_LOWER=ghcr.io/${{ github.repository }}" | tr '[:upper:]' '[:lower:]' >> $GITHUB_ENV
+
       - name: Build Podman image
         run: podman build -t orion:${{ github.sha }} .
 
       - name: Tag as latest
-        run: podman tag orion:${{ github.sha }} ghcr.io/${{ github.repository_owner }}/orion:latest
+        run: podman tag orion:${{ github.sha }} ${{ env.REPO_LOWER }}:latest
 
       - name: Tag with version (on tag push)
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
           VERSION=${GITHUB_REF#refs/tags/}
-          podman tag orion:${{ github.sha }} ghcr.io/${{ github.repository_owner }}/orion:${VERSION}
+          podman tag orion:${{ github.sha }} ${{ env.REPO_LOWER }}:${VERSION}
 
       - name: Login to GHCR
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -164,7 +168,7 @@ jobs:
       - name: Push images
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
-          podman push ghcr.io/${{ github.repository_owner }}/orion:latest
+          podman push ${{ env.REPO_LOWER }}:latest
 
   # ── Eval Suite (main only) ─────────────────────────────
   eval:
