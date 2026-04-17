@@ -37,22 +37,6 @@ class TaskEvent:
     subtask_id: str | None = None
     timestamp: str | None = None
 
-    @classmethod
-    def from_sse_line(cls, line: str) -> TaskEvent | None:
-        if not line.startswith("data:"):
-            return None
-        try:
-            data = json.loads(line[5:].strip())
-            return cls(
-                event_type=data.get("type", "unknown"),
-                agent=data.get("agent", "unknown"),
-                content=data.get("content", ""),
-                subtask_id=data.get("subtask_id"),
-                timestamp=data.get("ts"),
-            )
-        except json.JSONDecodeError:
-            return None
-
 
 # ── SSE consumer ─────────────────────────────────────────────────────────────
 
@@ -64,12 +48,12 @@ async def stream_task_events(
     """
     ORION-FIX: Consume the SSE stream for a task, returning all events.
 
-    Replaces the old poll_task_status() which called GET /v1/tasks/{id}
-    in a loop — that endpoint only returns final status, making timeout
-    debugging impossible.
+    Updated to handle multi-line SSE (event: type \n data: payload) and
+    map server-side EventType to test-side TaskEvent.
     """
     events: list[TaskEvent] = []
-    terminal_statuses = {"completed", "failed", "cancelled"}
+    terminal_statuses = {"DONE", "FAILED", "CANCELLED"}
+    current_event_type = "unknown"
 
     try:
         async with (
@@ -87,9 +71,56 @@ async def stream_task_events(
                 if not line:
                     continue
 
-                event = TaskEvent.from_sse_line(line)
-                if event is None:
+                if line.startswith("event:"):
+                    current_event_type = line[6:].strip()
                     continue
+
+                if not line.startswith("data:"):
+                    continue
+
+                try:
+                    data = json.loads(line[5:].strip())
+                except json.JSONDecodeError:
+                    continue
+
+                # Map server EventType (from current_event_type) to test TaskEvent
+                # Server types: planner_start, subtask_queued, subtask_start,
+                # subtask_result, verifier_result, supervisor_decision, done
+
+                agent = "unknown"
+                content = ""
+                subtask_id = data.get("id") or data.get("subtask_id")
+
+                if current_event_type == "planner_start":
+                    agent = "planner"
+                    content = "Starting plan generation"
+                elif current_event_type == "subtask_queued":
+                    agent = "planner"
+                    content = f"Queued subtask: {data.get('action')}"
+                elif current_event_type == "subtask_start":
+                    agent = "executor"
+                    content = f"Starting subtask: {data.get('action')}"
+                elif current_event_type == "subtask_result":
+                    agent = "executor"
+                    ok = data.get("success", False)
+                    content = f"Result: {'OK' if ok else 'FAIL'} - {data.get('output', '')}"
+                elif current_event_type == "verifier_result":
+                    agent = "verifier"
+                    content = f"Verification: {data.get('status')} - {data.get('issues', [])}"
+                elif current_event_type == "supervisor_decision":
+                    agent = "supervisor"
+                    content = f"Decision: {data.get('decision')}"
+                elif current_event_type == "done":
+                    current_event_type = "status"  # Map to status for compatibility
+                    content = data.get("status", "DONE")
+
+                event = TaskEvent(
+                    event_type=current_event_type,
+                    agent=agent,
+                    content=content,
+                    subtask_id=subtask_id,
+                    timestamp=data.get("ts"),
+                )
 
                 events.append(event)
                 log.debug(
@@ -112,7 +143,6 @@ async def stream_task_events(
             task_id,
             "\n".join(f"  [{e.agent}] {e.event_type}: {e.content[:60]}" for e in events[-5:]),
         )
-        # Return what we have — the caller can inspect which step stalled
     except Exception as exc:
         log.error("SSE stream error for task %s: %s", task_id, exc)
 
@@ -160,7 +190,7 @@ async def test_task1_shell() -> None:
     events = await stream_task_events(task_id, timeout_seconds=60)
 
     final = get_final_status(events)
-    if final != "completed":
+    if final != "DONE":
         stalled_at = get_last_agent(events)
         pytest.fail(
             f"Task 1 failed with status={final!r}. "
@@ -169,7 +199,7 @@ async def test_task1_shell() -> None:
             + "\n".join(f"  [{e.agent}] {e.event_type}: {e.content}" for e in events)
         )
 
-    assert final == "completed", f"Task 1 final status: {final}"
+    assert final == "DONE", f"Task 1 final status: {final}"
     log.info("Task 1 PASSED — %d events captured", len(events))
 
 
@@ -182,10 +212,9 @@ async def test_task2_reasoning_memory() -> None:
     events = await stream_task_events(task_id, timeout_seconds=90)
 
     final = get_final_status(events)
-    # Accept 'completed' or 'completed_degraded' (Memory offline fallback)
-    assert final in (
-        "completed",
-        "completed_degraded",
+    # Accept 'DONE' (server default)
+    assert (
+        final == "DONE"
     ), f"Task 2 status={final!r} — stalled at agent: {get_last_agent(events)!r}"
 
     # Check that memory was accessed (even if via fallback)
@@ -202,7 +231,7 @@ async def test_task3_gui_vision() -> None:
     events = await stream_task_events(task_id, timeout_seconds=90)
 
     final = get_final_status(events)
-    if final == "failed":
+    if final == "FAILED":
         # Check if it failed on the vision tool specifically (ngrok not up) vs something else
         vision_errors = [
             e for e in events if "vision" in e.content.lower() or "ngrok" in e.content.lower()
@@ -211,5 +240,5 @@ async def test_task3_gui_vision() -> None:
             pytest.skip("Task 3 skipped — Vision API tunnel (ngrok) not reachable on this host")
         pytest.fail(f"Task 3 failed for non-vision reason: {get_last_agent(events)!r}")
 
-    assert final == "completed"
+    assert final == "DONE"
     log.info("Task 3 PASSED — %d events captured", len(events))
