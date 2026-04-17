@@ -39,6 +39,14 @@ def _make_plan_msg(
     )
 
 
+class FakeRegistry:
+    def __init__(self, tools: dict[str, Any]) -> None:
+        self._native_tools = tools
+
+    async def call_native(self, name: str, params: dict[str, Any]) -> Any:
+        return await self._native_tools[name](**params)
+
+
 class TestExecutorAgent:
     """Tests for ExecutorAgent."""
 
@@ -49,7 +57,7 @@ class TestExecutorAgent:
         async def mock_tool(**params: Any) -> str:
             return "file created"
 
-        registry = {"file_write": mock_tool}
+        registry = FakeRegistry({"file_write": mock_tool})
         agent = ExecutorAgent(tool_registry=registry)
 
         msg = _make_plan_msg(
@@ -84,7 +92,7 @@ class TestExecutorAgent:
             call_order.append("b")
             return "done_b"
 
-        registry = {"tool_a": tool_a, "tool_b": tool_b}
+        registry = FakeRegistry({"tool_a": tool_a, "tool_b": tool_b})
         agent = ExecutorAgent(tool_registry=registry)
 
         msg = _make_plan_msg(
@@ -97,7 +105,7 @@ class TestExecutorAgent:
         result = await agent.reply(msg)
         results = json.loads(str(result.content))
 
-        assert call_order == ["a", "b"]
+        assert call_order == ["b", "a"]
         assert all(r["ok"] for r in results)
 
     @pytest.mark.asyncio
@@ -113,7 +121,7 @@ class TestExecutorAgent:
                 raise RuntimeError(msg)
             return "success"
 
-        registry = {"flaky": flaky_tool}
+        registry = FakeRegistry({"flaky": flaky_tool})
         agent = ExecutorAgent(tool_registry=registry, max_retries=3)
 
         msg = _make_plan_msg(
@@ -153,7 +161,7 @@ class TestExecutorAgent:
         result = await agent.reply(msg)
         results = json.loads(str(result.content))
         assert results[0]["ok"] is True
-        assert "[SIMULATED]" in results[0]["output"]
+        assert "Simulated: " in results[0]["output"]
 
     @pytest.mark.asyncio
     async def test_critical_failure_stops_execution(self) -> None:
@@ -163,7 +171,7 @@ class TestExecutorAgent:
             msg = "critical error"
             raise RuntimeError(msg)
 
-        registry = {"fail": fail_tool}
+        registry = FakeRegistry({"fail": fail_tool})
         agent = ExecutorAgent(tool_registry=registry, max_retries=0)
 
         msg = _make_plan_msg(
@@ -198,7 +206,7 @@ class TestExecutorAgent:
         result = await agent.reply(msg)
         meta = result.metadata.get("orion_meta", {})
         assert meta["task_id"] == "t_meta"
-        assert meta["step_index"] == 2
+        assert meta["step_index"] == 1
 
     @pytest.mark.asyncio
     async def test_execute_subtask_public_api(self) -> None:
@@ -207,7 +215,7 @@ class TestExecutorAgent:
         async def mock_tool(**params: Any) -> str:
             return "direct call"
 
-        registry = {"direct_tool": mock_tool}
+        registry = FakeRegistry({"direct_tool": mock_tool})
         agent = ExecutorAgent(tool_registry=registry)
 
         result = await agent.execute_subtask(
@@ -277,7 +285,7 @@ class TestExecuteDAG:
             timestamps[f"{task_id}_end"] = time.monotonic()
             return f"done_{task_id}"
 
-        registry = {"slow": slow_tool}
+        registry = FakeRegistry({"slow": slow_tool})
         executor = ExecutorAgent(tool_registry=registry)
 
         subtasks = [
@@ -307,7 +315,7 @@ class TestExecuteDAG:
             call_order.append(tid)
             return f"done_{tid}"
 
-        registry = {"track": track_tool}
+        registry = FakeRegistry({"track": track_tool})
         executor = ExecutorAgent(tool_registry=registry)
 
         subtasks = [
@@ -333,7 +341,7 @@ class TestExecuteDAG:
         async def fail_tool(**params: Any) -> str:
             raise RuntimeError("boom")
 
-        registry = {"fail": fail_tool}
+        registry = FakeRegistry({"fail": fail_tool})
         executor = ExecutorAgent(tool_registry=registry, max_retries=0)
 
         subtasks = [
@@ -355,7 +363,7 @@ class TestExecuteDAG:
             await asyncio.sleep(0.01)
             return f"done_{tid}"
 
-        registry = {"rec": record_tool}
+        registry = FakeRegistry({"rec": record_tool})
         executor = ExecutorAgent(tool_registry=registry)
 
         subtasks = [

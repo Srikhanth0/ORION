@@ -64,6 +64,8 @@ class ExecutorAgent(BaseOrionAgent):
         for subtask in subtasks:
             result = await self.execute_subtask(subtask)
             results.append(result)
+            if not result.get("ok", False) and subtask.get("is_critical", False):
+                break
 
         return self._make_reply(
             content=json.dumps(results, indent=2),

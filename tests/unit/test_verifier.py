@@ -40,7 +40,8 @@ class TestVerifierAgent:
     @pytest.mark.asyncio
     async def test_all_pass(self) -> None:
         """All steps successful → PASS."""
-        agent = VerifierAgent()  # No model — pure assertion mode
+        agent = VerifierAgent()
+        agent._model = None  # No model — pure assertion mode
         msg = _make_results_msg(
             [
                 {
@@ -61,6 +62,7 @@ class TestVerifierAgent:
     async def test_execution_failure_hard_fail(self) -> None:
         """Execution failure → HARD_FAIL."""
         agent = VerifierAgent()
+        agent._model = None
         msg = _make_results_msg(
             [
                 {"subtask_id": "s1", "ok": False, "output": None, "error": "tool crashed"},
@@ -76,6 +78,7 @@ class TestVerifierAgent:
     async def test_assertion_mismatch_soft_fail(self) -> None:
         """Output doesn't match expected → SOFT_FAIL."""
         agent = VerifierAgent()
+        agent._model = None
         msg = _make_results_msg(
             [
                 {
@@ -95,6 +98,7 @@ class TestVerifierAgent:
     async def test_empty_results(self) -> None:
         """Empty results list → PASS (nothing to fail)."""
         agent = VerifierAgent()
+        agent._model = None
         msg = _make_results_msg([])
 
         result = await agent.reply(msg)
@@ -105,6 +109,7 @@ class TestVerifierAgent:
     async def test_multiple_steps_mixed(self) -> None:
         """Mix of pass and fail steps."""
         agent = VerifierAgent()
+        agent._model = None
         msg = _make_results_msg(
             [
                 {"subtask_id": "s1", "ok": True, "output": "done", "expected_output": "done"},
@@ -121,6 +126,7 @@ class TestVerifierAgent:
     async def test_orion_meta_propagated(self) -> None:
         """orion_meta propagated to output."""
         agent = VerifierAgent()
+        agent._model = None
         msg = _make_results_msg(
             [{"subtask_id": "s1", "ok": True, "output": "ok"}],
             task_id="t_verify",
