@@ -11,7 +11,6 @@ import asyncio
 import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import Any
 
 import structlog
 from fastapi import FastAPI, Request
@@ -162,13 +161,6 @@ def create_app() -> FastAPI:
     app.include_router(tasks.router)
     app.include_router(tools.router)
     app.include_router(status.router)
-
-    # ORION-FIX: Qdrant is now optional; readiness only fails if LLM is unreachable
-    @app.get("/ready")
-    async def readiness() -> dict[str, Any]:  # noqa: F821
-        """Check application readiness."""
-        # Simple placeholder for actual router health check
-        return {"status": "ok", "qdrant": False}
 
     # Global exception handler → RFC 7807
     @app.exception_handler(Exception)

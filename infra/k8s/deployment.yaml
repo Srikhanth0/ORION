@@ -93,5 +93,4 @@ data:
   LOG_LEVEL: "INFO"
   METRICS_PORT: "9091"
   MAX_CONCURRENT_TASKS: "5"
-  QDRANT_URL: "http://qdrant:6333"
   PYAUTOGUI_FAILSAFE: "true"

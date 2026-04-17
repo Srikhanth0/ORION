@@ -175,14 +175,14 @@ async def test_task1_shell() -> None:
 
 @pytest.mark.asyncio
 async def test_task2_reasoning_memory() -> None:
-    """Task 2: reasoning + memory — requires LLM and (optionally) Qdrant."""
+    """Task 2: reasoning + memory — requires LLM and ChromaDB persistent memory."""
     task_id = await submit_task(
         "Summarize what ORION has done in past sessions and suggest 3 improvements."
     )
     events = await stream_task_events(task_id, timeout_seconds=90)
 
     final = get_final_status(events)
-    # Accept 'completed' or 'completed_degraded' (Qdrant offline fallback)
+    # Accept 'completed' or 'completed_degraded' (Memory offline fallback)
     assert final in (
         "completed",
         "completed_degraded",
