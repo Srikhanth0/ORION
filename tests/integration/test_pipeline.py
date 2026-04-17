@@ -213,9 +213,9 @@ async def test_task2_reasoning_memory() -> None:
 
     final = get_final_status(events)
     # Accept 'DONE' (server default)
-    assert (
-        final == "DONE"
-    ), f"Task 2 status={final!r} — stalled at agent: {get_last_agent(events)!r}"
+    assert final == "DONE", (
+        f"Task 2 status={final!r} — stalled at agent: {get_last_agent(events)!r}"
+    )
 
     # Check that memory was accessed (even if via fallback)
     memory_events = [e for e in events if "memory" in e.content.lower()]
