@@ -3,13 +3,10 @@
 from __future__ import annotations
 
 import base64
-import os
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
-os.environ["DISPLAY"] = ":99"
 
 from orion.tools.categories import vision_tools  # noqa: E402
 from orion.tools.registry import ToolCategory, ToolRegistry  # noqa: E402
