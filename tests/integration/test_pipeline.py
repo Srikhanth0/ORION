@@ -152,7 +152,7 @@ async def submit_task(instruction: str) -> str:
 
 
 @pytest.mark.asyncio
-async def test_task1_shell():
+async def test_task1_shell() -> None:
     """Task 1: basic shell — list .py files and count them."""
     task_id = await submit_task(
         "List all .py files in the current directory and count how many there are."
@@ -174,7 +174,7 @@ async def test_task1_shell():
 
 
 @pytest.mark.asyncio
-async def test_task2_reasoning_memory():
+async def test_task2_reasoning_memory() -> None:
     """Task 2: reasoning + memory — requires LLM and (optionally) Qdrant."""
     task_id = await submit_task(
         "Summarize what ORION has done in past sessions and suggest 3 improvements."
@@ -194,7 +194,7 @@ async def test_task2_reasoning_memory():
 
 
 @pytest.mark.asyncio
-async def test_task3_gui_vision():
+async def test_task3_gui_vision() -> None:
     """Task 3: GUI vision — requires ngrok tunnel to Vision API."""
     task_id = await submit_task(
         "Take a screenshot of the current screen and describe what applications are open."

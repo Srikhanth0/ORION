@@ -52,9 +52,9 @@ class TestSupervisorAgent:
         agent = SupervisorAgent()
         result = await agent.reply(_make_report_msg("PASS", "DONE"))
 
-        decision = json.loads(result.content)
+        decision = json.loads(str(result.content))
         assert decision["decision"]["action"] == "COMPLETE"
-        assert decision["decision"]["status"] == "completed"
+        assert decision["decision"]["status"] == "completed"  # type: ignore
 
     @pytest.mark.asyncio
     async def test_soft_fail_retries(self) -> None:
@@ -62,7 +62,7 @@ class TestSupervisorAgent:
         agent = SupervisorAgent()
         result = await agent.reply(_make_report_msg("SOFT_FAIL", "RETRY_STEP", retry_count=0))
 
-        decision = json.loads(result.content)
+        decision = json.loads(str(result.content))
         assert decision["decision"]["action"] == "RETRY"
 
     @pytest.mark.asyncio
@@ -71,7 +71,7 @@ class TestSupervisorAgent:
         agent = SupervisorAgent(max_auto_retries=3)
         result = await agent.reply(_make_report_msg("SOFT_FAIL", "RETRY_STEP", retry_count=3))
 
-        decision = json.loads(result.content)
+        decision = json.loads(str(result.content))
         assert decision["decision"]["action"] == "ESCALATE"
 
     @pytest.mark.asyncio
@@ -86,7 +86,7 @@ class TestSupervisorAgent:
             )
         )
 
-        decision = json.loads(result.content)
+        decision = json.loads(str(result.content))
         assert decision["decision"]["action"] == "ROLLBACK"
 
     @pytest.mark.asyncio
@@ -101,7 +101,7 @@ class TestSupervisorAgent:
             )
         )
 
-        decision = json.loads(result.content)
+        decision = json.loads(str(result.content))
         assert decision["decision"]["action"] == "ESCALATE"
 
     @pytest.mark.asyncio
@@ -110,7 +110,7 @@ class TestSupervisorAgent:
         agent = SupervisorAgent()
         result = await agent.reply(_make_report_msg("UNKNOWN_STATUS", "UNKNOWN"))
 
-        decision = json.loads(result.content)
+        decision = json.loads(str(result.content))
         assert decision["decision"]["action"] == "ESCALATE"
 
     @pytest.mark.asyncio
@@ -136,5 +136,5 @@ class TestSupervisorAgent:
             )
         )
 
-        decision = json.loads(result.content)
+        decision = json.loads(str(result.content))
         assert len(decision["decision"]["issues"]) == 1

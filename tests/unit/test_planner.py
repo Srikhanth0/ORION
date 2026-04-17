@@ -80,10 +80,10 @@ class TestPlannerAgent:
         agent = PlannerAgent(model=model)
         result = await agent.reply(_make_msg())
 
-        plan = json.loads(result.content)
+        plan = json.loads(str(result.content))
         assert "subtasks" in plan
-        assert len(plan["subtasks"]) == 1
-        assert plan["subtasks"][0]["id"] == "s1"
+        assert len(plan["subtasks"]) == 1  # type: ignore
+        assert plan["subtasks"][0]["id"] == "s1"  # type: ignore
 
     @pytest.mark.asyncio
     async def test_plan_with_dependencies(self) -> None:
@@ -118,9 +118,9 @@ class TestPlannerAgent:
         agent = PlannerAgent(model=model)
         result = await agent.reply(_make_msg())
 
-        parsed = json.loads(result.content)
-        assert len(parsed["subtasks"]) == 2
-        assert parsed["subtasks"][1]["depends_on"] == ["s1"]
+        parsed = json.loads(str(result.content))
+        assert len(parsed["subtasks"]) == 2  # type: ignore
+        assert parsed["subtasks"][1]["depends_on"] == ["s1"]  # type: ignore
 
     @pytest.mark.asyncio
     async def test_plan_validation_missing_subtasks(self) -> None:
@@ -176,8 +176,8 @@ class TestPlannerAgent:
         agent = PlannerAgent(model=model, max_retries=1)
         result = await agent.reply(_make_msg())
 
-        parsed = json.loads(result.content)
-        assert len(parsed["subtasks"]) == 1
+        parsed = json.loads(str(result.content))
+        assert len(parsed["subtasks"]) == 1  # type: ignore
 
     @pytest.mark.asyncio
     async def test_plan_with_tool_category(self) -> None:
@@ -205,14 +205,14 @@ class TestPlannerAgent:
         agent = PlannerAgent(model=model)
         result = await agent.reply(_make_msg())
 
-        parsed = json.loads(result.content)
-        assert parsed["subtasks"][0]["tool_category"] == "os_tools"
-        assert parsed["subtasks"][0]["tool_name"] == "OS_LIST_PROCESSES"
+        parsed = json.loads(str(result.content))
+        assert parsed["subtasks"][0]["tool_category"] == "os_tools"  # type: ignore
+        assert parsed["subtasks"][0]["tool_name"] == "OS_LIST_PROCESSES"  # type: ignore
 
     @pytest.mark.asyncio
     async def test_output_format_includes_tool_category(self) -> None:
         """Planner output format schema includes tool_category."""
         agent = PlannerAgent()
-        fmt = agent._get_output_format()
+        fmt = agent._get_output_format()  # type: ignore
         assert "tool_category" in fmt
         assert "tool_name" in fmt

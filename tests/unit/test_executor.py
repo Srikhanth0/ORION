@@ -66,7 +66,7 @@ class TestExecutorAgent:
         )
 
         result = await agent.reply(msg)
-        results = json.loads(result.content)
+        results = json.loads(str(result.content))
         assert len(results) == 1
         assert results[0]["ok"] is True
         assert results[0]["output"] == "file created"
@@ -95,7 +95,7 @@ class TestExecutorAgent:
         )
 
         result = await agent.reply(msg)
-        results = json.loads(result.content)
+        results = json.loads(str(result.content))
 
         assert call_order == ["a", "b"]
         assert all(r["ok"] for r in results)
@@ -129,7 +129,7 @@ class TestExecutorAgent:
         )
 
         result = await agent.reply(msg)
-        results = json.loads(result.content)
+        results = json.loads(str(result.content))
         assert results[0]["ok"] is True
         assert results[0]["attempt"] == 3
 
@@ -151,7 +151,7 @@ class TestExecutorAgent:
         )
 
         result = await agent.reply(msg)
-        results = json.loads(result.content)
+        results = json.loads(str(result.content))
         assert results[0]["ok"] is True
         assert "[SIMULATED]" in results[0]["output"]
 
@@ -181,7 +181,7 @@ class TestExecutorAgent:
         )
 
         result = await agent.reply(msg)
-        results = json.loads(result.content)
+        results = json.loads(str(result.content))
         # Only s1 was executed (failed), s2 was skipped
         assert len(results) == 1
         assert results[0]["ok"] is False

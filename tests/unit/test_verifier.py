@@ -53,7 +53,7 @@ class TestVerifierAgent:
         )
 
         result = await agent.reply(msg)
-        report = json.loads(result.content)
+        report = json.loads(str(result.content))
         assert report["overall"] == "PASS"
         assert report["recommendation"] == "DONE"
 
@@ -68,7 +68,7 @@ class TestVerifierAgent:
         )
 
         result = await agent.reply(msg)
-        report = json.loads(result.content)
+        report = json.loads(str(result.content))
         assert report["overall"] == "HARD_FAIL"
         assert report["recommendation"] == "ROLLBACK"
 
@@ -88,7 +88,7 @@ class TestVerifierAgent:
         )
 
         result = await agent.reply(msg)
-        report = json.loads(result.content)
+        report = json.loads(str(result.content))
         assert report["overall"] == "SOFT_FAIL"
 
     @pytest.mark.asyncio
@@ -98,7 +98,7 @@ class TestVerifierAgent:
         msg = _make_results_msg([])
 
         result = await agent.reply(msg)
-        report = json.loads(result.content)
+        report = json.loads(str(result.content))
         assert report["overall"] == "PASS"
 
     @pytest.mark.asyncio
@@ -113,7 +113,7 @@ class TestVerifierAgent:
         )
 
         result = await agent.reply(msg)
-        report = json.loads(result.content)
+        report = json.loads(str(result.content))
         assert report["overall"] == "HARD_FAIL"
         assert len(report["issues"]) > 0
 

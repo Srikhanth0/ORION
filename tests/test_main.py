@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-async def test_groq_model():
+async def test_groq_model() -> None:
     from orion.agentscope_config import build_model
 
     model = build_model("groq")
@@ -20,11 +20,11 @@ async def test_groq_model():
         print("Error:", e)
 
 
-async def test_openai_client():
+async def test_openai_client() -> None:
     from openai import OpenAI
 
     client = OpenAI(
-        api_key=os.environ.get("GROQ_API_KEY"),
+        api_key=os.environ.get("GROQ_API_KEY", ""),
         base_url="https://api.groq.com/openai/v1",
     )
     try:
@@ -38,8 +38,8 @@ async def test_openai_client():
         print("Error:", e)
 
 
-async def test_sync_model():
-    os.environ["OPENAI_API_KEY"] = os.environ.get("GROQ_API_KEY")
+async def test_sync_model() -> None:
+    os.environ["OPENAI_API_KEY"] = os.environ.get("GROQ_API_KEY", "")
     os.environ["OPENAI_BASE_URL"] = "https://api.groq.com/openai/v1"
     from agentscope.model import OpenAIChatModel
 
@@ -52,8 +52,8 @@ async def test_sync_model():
         print("ERROR:", e)
 
 
-async def test_final_model():
-    os.environ["OPENAI_API_KEY"] = os.environ.get("GROQ_API_KEY")
+async def test_final_model() -> None:
+    os.environ["OPENAI_API_KEY"] = os.environ.get("GROQ_API_KEY", "")
     os.environ["OPENAI_BASE_URL"] = "https://api.groq.com/openai/v1"
     from agentscope.model import OpenAIChatModel
 
@@ -69,7 +69,7 @@ async def test_final_model():
         print(f"Resp: {resp}")
 
 
-async def test_planner():
+async def test_planner() -> None:
     from agentscope.message import Msg
 
     from orion.agents.planner import PlannerAgent
@@ -80,7 +80,7 @@ async def test_planner():
     print(result.content)
 
 
-async def test_full_pipeline():
+async def test_full_pipeline() -> None:
     from agentscope.message import Msg
 
     from orion.agents.executor import ExecutorAgent
@@ -96,7 +96,7 @@ async def test_full_pipeline():
     executor = ExecutorAgent(tool_registry=registry)
     msg = Msg(name="user", role="user", content="list files in current directory")
     plan_msg = await planner.reply(msg)
-    plan = json.loads(plan_msg.content)
+    plan = json.loads(str(plan_msg.content))
     print("\n=== Plan ===")
     print(json.dumps(plan, indent=2))
     exec_msg = Msg(name="planner", role="assistant", content=json.dumps(plan))
@@ -105,7 +105,7 @@ async def test_full_pipeline():
     print(result.content)
 
 
-async def test_executor():
+async def test_executor() -> None:
     from agentscope.message import Msg
 
     from orion.agents.executor import ExecutorAgent
@@ -119,10 +119,10 @@ async def test_executor():
     executor = ExecutorAgent(tool_registry=registry)
     msg = Msg(name="user", role="user", content="list files in .")
     plan_msg = await planner.reply(msg)
-    plan = json.loads(plan_msg.content)
+    plan = json.loads(str(plan_msg.content))
     print("=== Plan ===")
     print(json.dumps(plan, indent=2))
-    subtask = plan["subtasks"][0]
+    subtask = plan["subtasks"][0]  # type: ignore
     tool_name = subtask.get("tool")
     print(f"\nLooking for tool: {tool_name}")
     print(f"Registry tools: {registry.list_tools()[:5]}...")
@@ -138,7 +138,7 @@ async def test_executor():
     print(result.content)
 
 
-async def test_native_tools():
+async def test_native_tools() -> None:
     from orion.tools.registry import ToolRegistry
 
     registry = ToolRegistry.get_instance()
@@ -148,7 +148,7 @@ async def test_native_tools():
     print(f"Result: {result}")
 
 
-async def test_os_tools():
+async def test_os_tools() -> None:
     from orion.tools.registry import ToolRegistry
 
     registry = ToolRegistry.get_instance()
@@ -163,7 +163,7 @@ async def test_os_tools():
     print(f"Read {len(str(result))} chars")
 
 
-async def test_tool_registry():
+async def test_tool_registry() -> None:
     from orion.tools.registry import ToolRegistry
 
     registry = ToolRegistry.get_instance()
@@ -174,8 +174,8 @@ async def test_tool_registry():
     print(f"Tool names: {[t.name for t in registry.list_tools()]}")
 
 
-async def test_tool_mapping():
-    from orion.tools.executor import ExecutorAgent
+async def test_tool_mapping() -> None:
+    from orion.agents.executor import ExecutorAgent
     from orion.tools.registry import ToolRegistry
 
     registry = ToolRegistry.get_instance()
@@ -198,7 +198,7 @@ async def test_tool_mapping():
         print(f"Is in native_tools: {mapped in native_tools}")
 
 
-async def test_api():
+async def test_api() -> None:
     import httpx
 
     print("1. Submitting Task...")
@@ -218,7 +218,7 @@ async def test_api():
                 print(line)
 
 
-async def run_all_tests():
+async def run_all_tests() -> None:
     print("=" * 50)
     print("Running all quick tests...")
     print("=" * 50)
@@ -249,7 +249,7 @@ TESTS = {
 }
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="ORION Test Runner")
     parser.add_argument("test", choices=list(TESTS.keys()), help="Test to run")
     args = parser.parse_args()

@@ -95,7 +95,7 @@ def run_task(task: dict[str, Any], verbose: bool = False) -> dict[str, Any]:
             final_msg = await supervisor.reply(verify_msg)
 
             try:
-                result_data = json.loads(final_msg.content)
+                result_data = json.loads(str(final_msg.content))
                 decision = result_data.get("decision", {})
             except (json.JSONDecodeError, KeyError):
                 decision = {}

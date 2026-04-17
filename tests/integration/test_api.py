@@ -31,7 +31,7 @@ class TestHealthEndpoints:
         """GET /health always returns 200."""
         resp = client.get("/health")
         assert resp.status_code == 200
-        assert resp.json()["status"] == "ok"
+        assert resp.json()["status"] == "ok"  # type: ignore
 
     def test_ready_returns_status(self, client: TestClient) -> None:
         """GET /ready returns dependency checks."""
@@ -54,7 +54,7 @@ class TestTaskEndpoints:
         assert resp.status_code == 202
         data = resp.json()
         assert "task_id" in data
-        assert data["status"] == "QUEUED"
+        assert data["status"] == "QUEUED"  # type: ignore
 
     def test_submit_task_validation_error(self, client: TestClient) -> None:
         """POST /v1/tasks with empty instruction returns 422."""

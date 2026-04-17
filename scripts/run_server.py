@@ -18,7 +18,7 @@ def run_server(port: int = 8080, host: str = "0.0.0.0", reload: bool = False):
     )
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="ORION Server Runner")
     parser.add_argument("-p", "--port", type=int, default=8080, help="Port to run server on")
     parser.add_argument("--host", type=str, default="0.0.0.0", help="Host to bind to")

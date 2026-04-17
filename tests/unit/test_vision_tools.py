@@ -58,10 +58,10 @@ class TestVisionTools:
         mock_post = AsyncMock(return_value=mock_response)
 
         class MockClient:
-            async def __aenter__(self):
+            async def __aenter__(self) -> MockClient:
                 return self
 
-            async def __aexit__(self, exc_type, exc_val, exc_tb):
+            async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
                 pass
 
             post = mock_post

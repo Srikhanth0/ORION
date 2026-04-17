@@ -219,7 +219,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="ORION Audit Runner")
     parser.add_argument(
         "--mode",
-        choices=["deps", "config", "llm", "integration", "all"],
+        choices=["deps", "config", "llm", "integration", "all"],  # type: ignore
         default="all",
         help="Audit mode",
     )
