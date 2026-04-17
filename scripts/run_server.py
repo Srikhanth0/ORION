@@ -4,8 +4,9 @@ import sys
 
 import uvicorn
 
-sys.path.insert(0, "C:/Users/srikh/Downloads/ORION")
-os.chdir("C:/Users/srikh/Downloads/ORION")
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, project_root)
+os.chdir(project_root)
 
 
 def run_server(port: int = 8080, host: str = "0.0.0.0", reload: bool = False):

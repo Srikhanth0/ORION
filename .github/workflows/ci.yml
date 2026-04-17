@@ -105,6 +105,26 @@ jobs:
       - name: Install xvfb
         run: sudo apt-get update && sudo apt-get install -y xvfb
 
+      - name: Start ORION API Server
+        run: |
+          nohup xvfb-run -a uv run python scripts/run_server.py > server.log 2>&1 &
+          echo "Waiting for server to be ready..."
+          max_attempts=30
+          count=0
+          until curl --output /dev/null --silent --head --fail http://localhost:8080/ready || [ $count -eq $max_attempts ]; do
+            printf '.'
+            sleep 2
+            count=$((count + 1))
+          done
+          if [ $count -eq $max_attempts ]; then
+            echo "Server failed to start"
+            cat server.log
+            exit 1
+          fi
+          echo "Server is ready!"
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+
       - name: Run integration tests
         run: xvfb-run -a uv run pytest tests/integration/ -v --tb=short --junitxml=junit-integration.xml
         env:
@@ -170,6 +190,26 @@ jobs:
 
       - name: Install xvfb
         run: sudo apt-get update && sudo apt-get install -y xvfb
+
+      - name: Start ORION API Server
+        run: |
+          nohup xvfb-run -a uv run python scripts/run_server.py > server.log 2>&1 &
+          echo "Waiting for server to be ready..."
+          max_attempts=30
+          count=0
+          until curl --output /dev/null --silent --head --fail http://localhost:8080/ready || [ $count -eq $max_attempts ]; do
+            printf '.'
+            sleep 2
+            count=$((count + 1))
+          done
+          if [ $count -eq $max_attempts ]; then
+            echo "Server failed to start"
+            cat server.log
+            exit 1
+          fi
+          echo "Server is ready!"
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
 
       - name: Run eval suite
         run: xvfb-run -a uv run python scripts/eval_task.py --all --verbose -o eval_report.json
